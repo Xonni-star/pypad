@@ -36,6 +36,10 @@ main{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
 .editor-wrap{flex:1;display:flex;min-height:0;overflow:hidden;background:#0c1120}
 #editor{flex:1;min-width:0;min-height:0}
 #editor .ace_marker-layer .ace_active-line{background:rgba(255,255,255,.035)}
+.ace_marker-layer .pypad-error{position:absolute;z-index:20;background:rgba(255,90,90,.22);
+  border-left:3px solid #ff6b6b;animation:pypadBlink 1.1s ease-in-out 3}
+@keyframes pypadBlink{0%,100%{background:rgba(255,90,90,.22)}50%{background:rgba(255,90,90,.6)}}
+.hint.clickable{cursor:pointer;color:var(--err);text-decoration:underline}
 pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;
   font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#0c1120}
 #out .err{color:var(--err)}
@@ -138,6 +142,10 @@ var buffers = {};
 var currentKey = null;
 var dirty = false;
 var loading = false;
+var errBuffer = '';
+var errorMarker = null;
+var errorRow = null;
+var AceRange = ace.require('ace/range').Range;
 var nextIndex = 0;
 var promptWanted = false;
 
@@ -245,7 +253,17 @@ function updateStdinHint() {
   stdinHint.textContent = getCode().indexOf('input(') >= 0 ? 'Dein Code nutzt input()' : '';
 }
 
-function setStatus(txt) { statusEl.textContent = txt || ''; }
+function setStatus(txt) {
+  statusEl.classList.remove('clickable');
+  statusEl.textContent = txt || '';
+}
+
+statusEl.addEventListener('click', function () {
+  if (errorRow === null) { return; }
+  editor.scrollToLine(errorRow, true, true, function () {});
+  editor.moveCursorTo(errorRow, 0);
+  editor.focus();
+});
 
 function nearBottom() {
   return (outEl.scrollHeight - outEl.scrollTop - outEl.clientHeight) < 40;
@@ -292,6 +310,8 @@ function startRun() {
   nextIndex = 0;
   promptWanted = false;
   pollFails = 0;
+  errBuffer = '';
+  clearErrorHighlight();
   busy(true);
   setStatus('laeuft ...');
   fetch('/run/start', {
@@ -328,7 +348,7 @@ function polls() {
     var stick = nearBottom();
     (d.chunks || []).forEach(function (c) {
       if (c.t === 'sys') { appendChunk('sys', c.s); }
-      else if (c.t === 'err') { appendChunk('err', c.s); }
+      else if (c.t === 'err') { appendChunk('err', c.s); errBuffer += c.s; }
       else { appendChunk('out', c.s); }
       if (c.s) { promptWanted = (c.s.slice(-1) !== '\n') && (c.t === 'out'); }
     });
@@ -355,12 +375,69 @@ function lostConnection() {
   outEl.scrollTop = outEl.scrollHeight;
 }
 
+function clearErrorHighlight() {
+  editor.session.clearAnnotations();
+  if (errorMarker !== null) {
+    editor.session.removeMarker(errorMarker);
+    errorMarker = null;
+  }
+  errorRow = null;
+  statusEl.classList.remove('clickable');
+}
+
+// Aus dem Traceback die Zeile (und Spalte) im eigenen Code herauslesen.
+function parseError(text) {
+  if (!text) { return null; }
+  var lines = text.split(String.fromCharCode(10));
+  var line = null;
+  var idx = -1;
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/File "([^"]*main\.py)", line (\d+)/);
+    if (m) { line = parseInt(m[2], 10); idx = i; }
+  }
+  if (line === null) { return null; }
+  var column = 0;
+  for (var j = idx + 1; j < Math.min(idx + 4, lines.length); j++) {
+    var caret = lines[j].indexOf('^');
+    if (caret >= 0) { column = Math.max(0, caret - 4); break; }
+  }
+  var message = '';
+  for (var k = lines.length - 1; k >= 0; k--) {
+    if (lines[k].trim()) { message = lines[k].trim(); break; }
+  }
+  return { line: line, column: column, message: message };
+}
+
+function highlightError(err) {
+  clearErrorHighlight();
+  if (!err) { return; }
+  var last = editor.session.getLength() - 1;
+  var row = Math.max(0, Math.min(err.line - 1, last));
+  editor.session.setAnnotations([{ row: row, column: err.column, text: err.message, type: 'error' }]);
+  errorMarker = editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-error', 'fullLine');
+  errorRow = row;
+  editor.scrollToLine(row, true, true, function () {});
+  editor.moveCursorTo(row, err.column);
+  statusEl.classList.add('clickable');
+}
+
 function finishRun(d) {
   clearInterval(pollTimer);
   pollTimer = null;
+  var err = parseError(errBuffer);
+  var zusatz = '';
+  if (err) {
+    highlightError(err);
+    zusatz = '  \u00b7  Fehler in Zeile ' + err.line + ' (anklicken zum Springen)';
+    appendChunk('err', '\n[PyPad] Fehler in Zeile ' + err.line + ': ' + err.message + '\n');
+  }
   appendChunk('dim', '\n[fertig - Exit ' + d.returncode + ', ' + d.ms + ' ms]\n');
   outEl.scrollTop = outEl.scrollHeight;
-  setStatus('Exit ' + d.returncode + ' \u00b7 ' + d.ms + ' ms');
+  if (statusEl.classList.contains('clickable')) {
+    statusEl.textContent = 'Fehler in Zeile ' + err.line + ' \u00b7 Exit ' + d.returncode + ' \u00b7 ' + d.ms + ' ms';
+  } else {
+    setStatus('Exit ' + d.returncode + ' \u00b7 ' + d.ms + ' ms');
+  }
   currentRun = null;
   busy(false);
   liveEl.value = '';
