@@ -73,8 +73,10 @@ python3 selbsttest.py     # PyPad muss dabei laufen
 
 ## Eigene Lektionen
 
-Als Beispiel liegt ein Lernpaket bei: §F§lektionen/lektion-01-ausgaben/§F§ (Beispiel, Übung, Lösung).
-Eigene Lektionen einfach daneben anlegen und in §F§lektionen/lektionen.json§F§ eintragen:
+Es liegen acht Lektionen bei (`lektionen/lektion-01-...` bis `-08-...`) — jeweils mit
+`beispiel.py`, `uebung.py` und `LOESUNG.py`, dazu ein `LERNPLAN.md`.
+Eigene Lektionen einfach daneben anlegen und in `lektionen/lektionen.json` eintragen:
+Eigene Lektionen einfach daneben anlegen und in `lektionen/lektionen.json` eintragen:
 
 ```text
 lektionen/lektionen.json           # [{"nr": "01", "titel": "...", "dir": "lektion-01-..."}]
