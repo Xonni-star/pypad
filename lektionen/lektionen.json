@@ -3,5 +3,40 @@
     "nr": "01",
     "titel": "Ausgaben & Variablen",
     "dir": "lektion-01-ausgaben"
+  },
+  {
+    "nr": "02",
+    "titel": "Eingaben & Zahlen",
+    "dir": "lektion-02-eingaben"
+  },
+  {
+    "nr": "03",
+    "titel": "Entscheidungen",
+    "dir": "lektion-03-entscheidungen"
+  },
+  {
+    "nr": "04",
+    "titel": "Schleifen",
+    "dir": "lektion-04-schleifen"
+  },
+  {
+    "nr": "05",
+    "titel": "Listen & Dictionaries",
+    "dir": "lektion-05-listen"
+  },
+  {
+    "nr": "06",
+    "titel": "Funktionen",
+    "dir": "lektion-06-funktionen"
+  },
+  {
+    "nr": "07",
+    "titel": "Dateien & Module",
+    "dir": "lektion-07-dateien"
+  },
+  {
+    "nr": "08",
+    "titel": "Mini-Projekte",
+    "dir": "lektion-08-mini-projekte"
   }
 ]
