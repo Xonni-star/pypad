@@ -196,6 +196,17 @@ p1 = poll(r1)
 p2 = poll(r2)
 check("zwei Laeufe gleichzeitig", "A 5" in text_of(p1, "out") and "B 5" in text_of(p2, "out"))
 
+# ---------- Prueft der Test die eigene Installation? ----------
+st, b = req("/info")
+folder = json.loads(b).get("snippets", "")
+local_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "snippets")
+same_folder = os.path.realpath(folder) == os.path.realpath(local_folder)
+if not same_folder:
+    print("HINWEIS: getestet wird der PyPad-Ordner " + folder)
+    print("         dieser Test liegt aber in " + os.path.dirname(os.path.abspath(__file__)))
+    print("         Fuer diesen Ordner: PYPAD_BASE=http://127.0.0.1:<port> python3 selbsttest.py")
+    print("")
+
 # ---------- einfacher Modus /run ----------
 st, b = req("/run", {"code": "print(6*7)"})
 d = json.loads(b)
@@ -211,7 +222,10 @@ check("/run: 5000 Zeilen Ausgabe", d["stdout"].count(NL) >= 5000 and d["returnco
       "Zeilen=" + str(d["stdout"].count(NL)))
 st, b = req("/run", {"code": "open('check_tmp.txt', 'w').write('ok')" + NL + "print(open('check_tmp.txt').read())"})
 d = json.loads(b)
-check("/run: Datei im playground", d["stdout"].strip() == "ok" and os.path.exists("playground/check_tmp.txt"), repr(d["stdout"]))
+if same_folder:
+    check("/run: Datei im playground", d["stdout"].strip() == "ok" and os.path.exists("playground/check_tmp.txt"), repr(d["stdout"]))
+else:
+    check("/run: Datei im playground (Ausgabe geprueft, anderer Ordner)", d["stdout"].strip() == "ok", repr(d["stdout"]))
 
 # ---------- Lektionen ----------
 st, b = req("/lektionen")
