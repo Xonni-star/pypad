@@ -1,0 +1,35 @@
+{
+  "tipps": [
+    "Schreiben: with open(\"datei.txt\", \"w\") as f:  f.write(text)",
+    "Lesen: with open(\"datei.txt\") as f:  for zeile in f:  ...",
+    "zeile.strip() entfernt den Zeilenumbruch am Ende."
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "stdin": "Apfel\nBirne\nKiwi\n",
+        "beschreibung": "Wörter speichern, wieder lesen und Längen ausgeben",
+        "muss_enthalten": [
+          "apfel",
+          "5"
+        ]
+      }
+    ],
+    "uebung-plus": [
+      {
+        "beschreibung": "3 Zeilen geschrieben + 2 angehängt = 5 Zeilen gezählt",
+        "muss_enthalten": [
+          "5"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "beschreibung": "Kreisfläche bei Radius 3 ist 28.27",
+        "muster": [
+          "28\\.2"
+        ]
+      }
+    ]
+  }
+}

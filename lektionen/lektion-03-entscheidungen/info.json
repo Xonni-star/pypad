@@ -1,0 +1,71 @@
+{
+  "tipps": [
+    "if alter < 12:  - der Doppelpunkt gehört dazu!",
+    "Von klein nach groß prüfen: erst <= 11, dann <= 17, dann <= 64, sonst Senior.",
+    "Der eingerückte Block (4 Leerzeichen) gehört zum if."
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "stdin": "5\n",
+        "beschreibung": "Alter 5 ergibt Kind",
+        "muss_enthalten": [
+          "kind"
+        ]
+      },
+      {
+        "stdin": "15\n",
+        "beschreibung": "Alter 15 ergibt Teenager",
+        "muss_enthalten": [
+          "teenager"
+        ]
+      },
+      {
+        "stdin": "30\n",
+        "beschreibung": "Alter 30 ergibt Erwachsener",
+        "muss_enthalten": [
+          "erwachsen"
+        ]
+      },
+      {
+        "stdin": "70\n",
+        "beschreibung": "Alter 70 ergibt Senior",
+        "muss_enthalten": [
+          "senior"
+        ]
+      }
+    ],
+    "uebung-plus": [
+      {
+        "stdin": "1\n",
+        "beschreibung": "Note 1 ist sehr gut",
+        "muss_enthalten": [
+          "sehr gut"
+        ]
+      },
+      {
+        "stdin": "5\n",
+        "beschreibung": "Note 5 ist nicht bestanden",
+        "muss_enthalten": [
+          "nicht bestanden"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "stdin": "2024\n",
+        "beschreibung": "2024 ist ein Schaltjahr",
+        "muss_enthalten": [
+          "schaltjahr"
+        ]
+      },
+      {
+        "stdin": "2023\n",
+        "beschreibung": "2023 ist kein Schaltjahr",
+        "darf_nicht_enthalten": [
+          "2023 ist ein schaltjahr"
+        ]
+      }
+    ]
+  }
+}

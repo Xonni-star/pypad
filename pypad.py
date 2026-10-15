@@ -195,6 +195,9 @@ def complete_words(code, prefix):
     return words
 
 
+RUNNER_SOURCE = "\"\"\"PyPad-Runner: fuehrt den Code aus und schreibt danach die Variablen weg.\n\nWird von pypad.py automatisch erzeugt. Absichtlich so gebaut, dass Ausgabe und\nFehlermeldungen genau wie bei \"python3 main.py\" aussehen.\n\"\"\"\nimport json\nimport sys\nimport traceback\n\npfad = sys.argv[1]\nausgabe_pfad = sys.argv[2] if len(sys.argv) > 2 else None\n\nsys.argv = [pfad]\nns = {\"__name__\": \"__main__\", \"__file__\": pfad}\n\n\ndef _kurz(wert):\n    try:\n        text = repr(wert)\n    except Exception:\n        text = \"<nicht darstellbar>\"\n    text = \" \".join(text.split())\n    return text if len(text) <= 120 else text[:117] + \"...\"\n\n\ndef _sammeln():\n    wichtig = []\n    for name in sorted(ns):\n        if name.startswith(\"__\"):\n            continue\n        wert = ns[name]\n        art = type(wert).__name__\n        if art in (\"module\", \"function\", \"builtin_function_or_method\", \"type\", \"method\", \"classmethod\"):\n            continue\n        wichtig.append([name, art, _kurz(wert)])\n    return wichtig\n\n\ndef _wegschreiben():\n    if not ausgabe_pfad:\n        return\n    try:\n        with open(ausgabe_pfad, \"w\", encoding=\"utf-8\") as fh:\n            json.dump(_sammeln(), fh)\n    except Exception:\n        pass\n\n\ntry:\n    quelle = open(pfad, encoding=\"utf-8\").read()\n    code = compile(quelle, pfad, \"exec\")\nexcept SyntaxError as fehler:\n    traceback.print_exception(type(fehler), fehler, None)\n    status = 1\nelse:\n    status = 0\n    try:\n        exec(code, ns)\n    except SystemExit as fehler:\n        if isinstance(fehler.code, int):\n            status = fehler.code\n        else:\n            status = 0 if fehler.code is None else 1\n    except BaseException as fehler:   # noqa: BLE001 - genau wie Python selbst behandeln\n        tb = sys.exc_info()[2]\n        traceback.print_exception(type(fehler), fehler, tb.tb_next if tb else None)\n        status = 1\n    finally:\n        _wegschreiben()\n\nsys.exit(status)\n"
+
+
 def _namen_im_code(code):
     """Alle Bezeichner aus dem Code (fuer "Meintest du ...?")"""
     return set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code or ""))
@@ -418,6 +421,93 @@ def explain_error(text, code):
     }
 
 
+def _lauf_ergebnis(code, stdin_text, timeout=15):
+    """Code einmal ausfuehren - fuer die Uebungs-Pruefung."""
+    run = Run(code, stdin_text)
+    try:
+        run.proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        run.kill()
+        run.proc.wait()
+    time.sleep(0.15)
+    with run.lock:
+        chunks = list(run.chunks)
+    out = "".join(c["s"] for c in chunks if c["t"] != "err")
+    err = "".join(c["s"] for c in chunks if c["t"] == "err")
+    rc = run.proc.returncode
+    run.tmp.cleanup()
+    return out, err, rc
+
+
+def _als_liste(wert):
+    """Einzelner Text oder Liste - immer als Liste behandeln."""
+    if wert is None:
+        return []
+    if isinstance(wert, str):
+        return [wert]
+    if isinstance(wert, (list, tuple)):
+        return list(wert)
+    return [wert]
+
+
+def _normal(text):
+    return "\n".join(z.rstrip() for z in (text or "").strip().split("\n"))
+
+
+def pruefen(folder, code, stufe="uebung"):
+    """Den Code gegen die Faelle aus info.json pruefen."""
+    try:
+        info = json.loads((folder / "info.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {"error": "fuer diese Lektion gibt es noch keine Pruefung"}
+    pruefungen = info.get("pruefung") or {}
+    faelle = pruefungen.get(stufe) or pruefungen.get("uebung") or []
+    if not faelle:
+        return {"error": "keine Pruefungsfaelle hinterlegt"}
+    ergebnisse = []
+    for fall in faelle:
+        out, err, rc = _lauf_ergebnis(code, fall.get("stdin") or "")
+        ok = rc == 0 and not err.strip()
+        fehlt = []
+        if ok:
+            normal = _normal(out)
+            klein = normal.lower()
+            for muss in _als_liste(fall.get("muss_enthalten")):
+                if str(muss).lower() not in klein:
+                    ok = False
+                    fehlt.append(str(muss))
+            for darf_nicht in _als_liste(fall.get("darf_nicht_enthalten")):
+                if str(darf_nicht).lower() in klein:
+                    ok = False
+                    fehlt.append("ohne " + str(darf_nicht))
+            for muster in _als_liste(fall.get("muster")):
+                if not re.search(muster, normal, re.M | re.I):
+                    ok = False
+                    fehlt.append("Zeile wie " + str(muster))
+            if fall.get("min_zeilen") and len([z for z in normal.split("\n") if z.strip()]) < int(fall["min_zeilen"]):
+                ok = False
+                fehlt.append("mindestens " + str(fall["min_zeilen"]) + " Zeilen")
+        eintrag = {"beschreibung": fall.get("beschreibung") or "Test", "ok": ok}
+        if not ok:
+            if err.strip():
+                eintrag["fehler"] = err.strip().split("\n")[-1][:100]
+            elif rc != 0:
+                eintrag["fehler"] = "Programm lief nicht zu Ende (Zeitlimit oder Stopp)"
+            if fehlt:
+                eintrag["erwartet"] = "; ".join(fehlt)[:140]
+            eintrag["bekommen"] = _normal(out)[:160].replace("\n", " / ")
+        ergebnisse.append(eintrag)
+    return {"faelle": ergebnisse}
+
+
+def _fortschritt_lesen():
+    try:
+        daten = json.loads((LESSON_DIR / "fortschritt.json").read_text(encoding="utf-8"))
+        return daten if isinstance(daten, dict) else {}
+    except Exception:
+        return {}
+
+
 def scope_nodes(scope):
     """Alle Knoten eines Scopes, aber nicht in tiefere Scopes (Funktionen/Klassen) hinein."""
     result = []
@@ -612,13 +702,16 @@ class Run:
         self.tmp = tempfile.TemporaryDirectory(prefix="pypad-")
         script = Path(self.tmp.name) / "main.py"
         script.write_text(code, encoding="utf-8")
+        runner = Path(self.tmp.name) / "_pypad_runner.py"
+        runner.write_text(RUNNER_SOURCE, encoding="utf-8")
+        self.vars_path = Path(self.tmp.name) / "_pypad_vars.json"
         env = dict(os.environ)
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         env["MPLBACKEND"] = "Agg"
         self.proc = subprocess.Popen(
-            [PYTHON, "-u", str(script)],
+            [PYTHON, "-u", str(runner), str(script), str(self.vars_path)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -695,6 +788,13 @@ class Run:
                 self.explain = explain_error(fehlertext, self.code) or {}
             except Exception:
                 self.explain = {}
+        variablen = None
+        if self.done:
+            try:
+                if self.vars_path.exists():
+                    variablen = json.loads(self.vars_path.read_text(encoding="utf-8"))
+            except Exception:
+                variablen = None
         return {
             "chunks": chunks,
             "next": total,
@@ -702,6 +802,7 @@ class Run:
             "returncode": self.returncode,
             "ms": int((time.time() - self.started) * 1000),
             "explanation": self.explain if self.done else None,
+            "vars": variablen,
         }
 
 
@@ -789,6 +890,20 @@ class Handler(BaseHTTPRequestHandler):
                 "playground": str(WORKDIR),
             })
             return
+        if url.path == "/fortschritt":
+            self._json({"fortschritt": _fortschritt_lesen()})
+            return
+        if url.path == "/lektion-info":
+            query = parse_qs(url.query)
+            folder = resolve_dir((query.get("dir") or [""])[0])
+            if folder is None:
+                self._json({"error": "ungueltiger Ordner"}, 400)
+                return
+            try:
+                self._json(json.loads((folder / "info.json").read_text(encoding="utf-8")))
+            except Exception:
+                self._json({})
+            return
         if url.path == "/lektionen":
             try:
                 data = json.loads((LESSON_DIR / "lektionen.json").read_text(encoding="utf-8"))
@@ -818,6 +933,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         url = urlparse(self.path)
         data = self._body()
+
+        if url.path == "/pruefen":
+            folder = resolve_dir(data.get("dir"))
+            code = data.get("code") or ""
+            if folder is None or not code.strip():
+                self._json({"error": "ungueltiger Aufruf"}, 400)
+                return
+            self._json(pruefen(folder, code, data.get("stufe") or "uebung"))
+            return
+
+        if url.path == "/fortschritt":
+            eintrag = {"erledigt": bool(data.get("erledigt")), "datum": time.strftime("%Y-%m-%d %H:%M")}
+            daten = _fortschritt_lesen()
+            daten[str(data.get("dir") or "").strip()] = eintrag
+            try:
+                (LESSON_DIR / "fortschritt.json").write_text(
+                    json.dumps(daten, ensure_ascii=False, indent=2), encoding="utf-8")
+                self._json({"gespeichert": True})
+            except OSError as exc:
+                self._json({"error": str(exc)}, 500)
+            return
 
         if url.path == "/complete":
             self._json({"words": complete_words(data.get("code") or "", data.get("prefix") or "")})

@@ -1,0 +1,59 @@
+{
+  "tipps": [
+    "for i in range(1, 11) läuft 1 bis 10 - die 11 gehört nicht dazu.",
+    "while: die Bedingung muss sich IN der Schleife ändern, sonst endlos.",
+    "Falls es hängt: der Stopp-Knopf beendet das Programm."
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "stdin": "5\n",
+        "beschreibung": "zählt bis 10",
+        "muster": "^10$"
+      },
+      {
+        "stdin": "5\n",
+        "beschreibung": "7er-Reihe bis 70",
+        "muss_enthalten": [
+          "70"
+        ]
+      },
+      {
+        "stdin": "3\n",
+        "beschreibung": "Countdown bis 1 mit Start!",
+        "muss_enthalten": [
+          "start"
+        ],
+        "muster": "^1$"
+      }
+    ],
+    "uebung-plus": [
+      {
+        "beschreibung": "Summe von 1 bis 100 ergibt 5050",
+        "muss_enthalten": [
+          "5050"
+        ]
+      },
+      {
+        "stdin": "5\n",
+        "beschreibung": "Fakultät von 5 ergibt 120",
+        "muss_enthalten": [
+          "120"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "stdin": "5\n",
+        "beschreibung": "Primzahlen bis 30 (u. a. 29)",
+        "muss_enthalten": [
+          "29"
+        ],
+        "muster": [
+          "^2$",
+          "^23$"
+        ]
+      }
+    ]
+  }
+}

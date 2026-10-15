@@ -1,0 +1,38 @@
+{
+  "tipps": [
+    "Überlege zuerst: welche Schritte braucht das Programm?",
+    "Baue es aus den Bausteinen der früheren Lektionen zusammen.",
+    "Teste mit einfachen Werten und mit Sonderfällen (0, leere Eingabe)."
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "stdin": "100\n10\nBrot\nMilch\n\n2\n3\nende\n",
+        "beschreibung": "Trinkgeld-Rechner: 100 plus 10 % ergibt 110",
+        "muss_enthalten": [
+          "110"
+        ]
+      }
+    ],
+    "uebung-plus": [
+      {
+        "stdin": "Brot\nMilch\n\n",
+        "beschreibung": "Einkaufsliste sammelt Artikel bis zur leeren Eingabe",
+        "muss_enthalten": [
+          "brot",
+          "milch"
+        ],
+        "min_zeilen": 3
+      }
+    ],
+    "uebung-profi": [
+      {
+        "stdin": "2\n3\nende\n",
+        "beschreibung": "Noten 2 und 3 ergeben Durchschnitt 2.5",
+        "muss_enthalten": [
+          "2.5"
+        ]
+      }
+    ]
+  }
+}

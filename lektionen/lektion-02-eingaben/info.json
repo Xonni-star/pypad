@@ -1,0 +1,40 @@
+{
+  "tipps": [
+    "input() liefert immer Text - wandle um: int(text) oder float(text).",
+    "Kommazahlen mit Punkt: float(\"2.5\")",
+    "Runden beim Ausgeben: f\"{wert:.2f}\""
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "stdin": "7\n3\n",
+        "beschreibung": "Summe 10, Differenz 4, Produkt 21",
+        "muss_enthalten": [
+          "10",
+          "4",
+          "21"
+        ]
+      }
+    ],
+    "uebung-plus": [
+      {
+        "stdin": "2.5\n4\n",
+        "beschreibung": "2,50 Euro mal 4 ergibt insgesamt 10",
+        "muss_enthalten": [
+          "10"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "stdin": "3725\n",
+        "beschreibung": "3725 Sekunden sind 1 Stunde, 2 Minuten, 5 Sekunden",
+        "muss_enthalten": [
+          "stunde",
+          "minute",
+          "sekunde"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "tipps": [
+    "def name(parameter): - darunter eingerückt der Code der Funktion.",
+    "return gibt einen Wert zurück; ohne return kommt None heraus.",
+    "Aufrufen: print(flaeche(4, 5))"
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "beschreibung": "gibt für 1 bis 10 gerade/ungerade aus",
+        "muss_enthalten": [
+          "gerade",
+          "ungerade"
+        ],
+        "min_zeilen": 10
+      }
+    ],
+    "uebung-plus": [
+      {
+        "beschreibung": "gibt Flaeche und Umfang des Rechtecks aus",
+        "muss_enthalten": [
+          "flaeche",
+          "umfang"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "beschreibung": "fakultaet(5) ergibt 120",
+        "muss_enthalten": [
+          "120"
+        ]
+      }
+    ]
+  }
+}

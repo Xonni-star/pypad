@@ -1,0 +1,45 @@
+{
+  "tipps": [
+    "Anhängen: liste.append(\"Suppe\")",
+    "Nummerieren: for i, x in enumerate(liste, start=1):",
+    "Dictionary-Eintrag: daten[\"Max\"] = 45"
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "beschreibung": "gibt mindestens 4 Zeilen aus",
+        "min_zeilen": 4
+      },
+      {
+        "beschreibung": "nummeriert die Gerichte (1. 2. 3.)",
+        "muster": [
+          "^1\\.",
+          "^3\\."
+        ]
+      },
+      {
+        "beschreibung": "gibt das Alter-Dictionary aus",
+        "muss_enthalten": [
+          "jahre"
+        ]
+      }
+    ],
+    "uebung-plus": [
+      {
+        "beschreibung": "gibt Summe und Durchschnitt der Liste aus",
+        "muss_enthalten": [
+          "summe",
+          "durchschnitt"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "beschreibung": "zählt die Wörter: a kommt dreimal vor",
+        "muster": [
+          "^a: 3$"
+        ]
+      }
+    ]
+  }
+}

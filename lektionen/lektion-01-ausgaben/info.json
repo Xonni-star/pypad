@@ -1,0 +1,35 @@
+{
+  "tipps": [
+    "Nutze einen f-string: f\"Hallo {name}\" - die geschweiften Klammern setzen den Wert ein.",
+    "Eine Trennlinie bekommst du mit \"-\" * 25 (Zeichen wiederholen).",
+    "Jede Ausgabe braucht ein eigenes print()."
+  ],
+  "pruefung": {
+    "uebung": [
+      {
+        "beschreibung": "gibt mindestens 2 Zeilen aus (Satz + Trennlinie)",
+        "min_zeilen": 2
+      },
+      {
+        "beschreibung": "enthält eine Trennlinie aus mindestens 20 Minuszeichen",
+        "muster": "^-{20,}$"
+      }
+    ],
+    "uebung-plus": [
+      {
+        "beschreibung": "Steckbrief mit Trennlinie (====...) und mehreren Zeilen",
+        "min_zeilen": 6,
+        "muster": [
+          "^={20,}$"
+        ]
+      }
+    ],
+    "uebung-profi": [
+      {
+        "beschreibung": "Rechteck: Zeilen aus genau 10 Rauten",
+        "muster": "^#{10}$",
+        "min_zeilen": 5
+      }
+    ]
+  }
+}

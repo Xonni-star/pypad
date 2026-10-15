@@ -36,6 +36,16 @@ ausgeführt wird dein Code mit dem installierten Python.
   „Funktion gibt nichts zurück (None), Ergebnis wird trotzdem benutzt".
   Gelbe Zeilenmarkierung, Symbol im Rand, Liste in der Ausgabe mit **anklickbaren Zeilennummern**,
   dazu ein Knopf **„→ Zeile N"** in der Ausgabe, der zur Fehler-/Hinweiszeile springt.
+- **Übungen mit Selbstkontrolle:** der Knopf **✓ Prüfen** testet deinen Code automatisch gegen
+  mehrere Fälle (mit vorgegebenen Eingaben) und zeigt ✅/❌ samt „erwartet/bekommen". Bestehst du alle,
+  wird die Lektion als **erledigt** markiert (Anzeige „3 von 8 erledigt").
+- **Drei Schwierigkeitsstufen** pro Lektion: **Übung**, **Übung +**, **Übung ++**
+- **Tipp-Knopf**: schrittweise Denkanstöße, ohne die Lösung zu verraten
+- **Variablen am Ende** eines Laufs werden angezeigt (Name, Wert, Typ) — erklärt die meisten Fragen
+- **Verlauf**: die letzten 12 Läufe mit Ergebnis; ein Klick holt den Code zurück
+- **Vorlagen** in der Autovervollständigung (`for`, `def`, `try`, `with` … als Gerüst)
+- **Auto-Speichern** von Übungen und Snippets, **Cmd+S** speichert sofort
+- **Darstellung umschaltbar**: hell/dunkel und Schriftgröße (wird gemerkt)
 - **Snippets** speichern / laden / löschen
 - **Lernbereich:** Lektionen mit *Beispiel / Übung / Lösung*; Wechseln verliert keine Eingaben,
   Übungen werden automatisch gesichert

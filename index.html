@@ -48,6 +48,13 @@ button.mini{padding:3px 8px;font-size:11px;border-radius:6px}
 .ace_marker-layer .pypad-warn-range{position:absolute;z-index:20;background:rgba(255,200,80,.32);
   border-bottom:2px solid #ffc850;border-radius:3px}
 #out .explain .ec{color:#ffd9b8;font-weight:700}
+#out .vars{display:block;margin:8px 0 4px;padding:8px 12px;border-left:3px solid #6ea8fe;background:#182034;border-radius:6px;white-space:pre-wrap}
+#out .vars .vh{color:#9dc1ff;font-weight:700}
+#out .vars .vt{color:#d7e5ff}
+#out .verlauf{display:block;margin:8px 0;padding:8px 12px;border-left:3px solid #8a94b0;background:#161d2e;border-radius:6px;white-space:pre-wrap}
+#out .verlauf a{color:var(--acc);text-decoration:underline;cursor:pointer}
+#out .verlauf .vt{color:#c8d2ea}
+button.mini.on{background:#2c4a37;border-color:var(--acc)}
 #out a.jump{color:var(--acc);text-decoration:underline;cursor:pointer}
 #out .explain{display:block;margin:10px 0 4px;padding:10px 12px;border-left:3px solid #ffb454;
   background:#1d2233;border-radius:6px;white-space:pre-wrap}
@@ -84,14 +91,22 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <button id="btnSave">Speichern</button>
   <button id="btnDelete">Loeschen</button>
   <button id="btnNew">Neu</button>
+  <button id="btnFontDown" class="mini" title="Schrift kleiner">A&#8722;</button>
+  <button id="btnFontUp" class="mini" title="Schrift groesser">A+</button>
+  <button id="btnTheme" class="mini" title="Hell/Dunkel">&#9788;</button>
 </header>
 
 <div class="bar2">
   <span class="lbl">LERNEN</span>
+  <span class="hint" id="fortschrittInfo"></span>
   <select id="lessons"><option value="">— Lektion waehlen —</option></select>
   <button id="btnBeispiel">Beispiel</button>
-  <button id="btnUebung">Übung</button>
+  <select id="stufe"><option value="uebung">Übung</option><option value="uebung-plus">Übung +</option><option value="uebung-profi">Übung ++</option></select>
+  <button id="btnUebung">Laden</button>
+  <button id="btnTipp">Tipp</button>
+  <button id="btnPruefen">✓ Prüfen</button>
   <button id="btnLoesung">Lösung</button>
+  <button id="btnErledigt">✓ erledigt</button>
   <span class="hint" id="loadHint"></span>
 </div>
 
@@ -124,12 +139,14 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <button id="btnRun" class="run">&#9654; Ausfuehren</button>
   <button id="btnStop" class="stop" disabled>&#9632; Stopp</button>
   <button id="btnClear">Ausgabe leeren</button>
+  <button id="btnVerlauf">Verlauf</button>
   <span class="hint" id="footHint"></span>
 </footer>
 
 <script src="vendor/ace.js"></script>
 <script src="vendor/mode-python.js"></script>
 <script src="vendor/theme-tomorrow_night.js"></script>
+<script src="vendor/theme-tomorrow.js"></script>
 <script src="vendor/ext-language_tools.js"></script>
 <script src="vendor/ext-searchbox.js"></script>
 <script>
@@ -149,6 +166,14 @@ var stdinHint = document.getElementById('stdinHint');
 var lessonsEl = document.getElementById('lessons');
 var loadHint = document.getElementById('loadHint');
 var btnJump = document.getElementById('btnJump');
+var stufeEl = document.getElementById('stufe');
+var btnErledigt = document.getElementById('btnErledigt');
+var fortschrittInfo = document.getElementById('fortschrittInfo');
+var fortschritt = {};
+var verlaufListe = [];
+var autoTimer = null;
+var THEMEN = ['ace/theme/tomorrow_night', 'ace/theme/tomorrow'];
+var schriftGroesse = 13;
 
 var currentRun = null;
 var pollTimer = null;
@@ -197,7 +222,8 @@ editor.setOptions({
   scrollPastEnd: 0.4,
   enableBasicAutocompletion: true,
   enableLiveAutocompletion: true,
-  enableSnippets: false
+  enableSnippets: true,
+  enableAutoIndent: true
 });
 editor.renderer.setScrollMargin(8, 8);
 editor.setValue(DEFAULT_CODE, -1);
@@ -216,6 +242,21 @@ function dottedChain(session, pos) {
   return m ? m[0] : null;
 }
 
+var PY_SNIPPETS = [
+  { value: 'for', snippet: 'for ${1:i} in ${2:range(10)}:' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'while', snippet: 'while ${1:bedingung}:' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'if', snippet: 'if ${1:bedingung}:' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'ifelse', snippet: 'if ${1:bedingung}:' + String.fromCharCode(10) + '	${2:pass}' + String.fromCharCode(10) + 'else:' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'def', snippet: 'def ${1:name}(${2}):' + String.fromCharCode(10) + '	"""${3:Beschreibung}"""' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'class', snippet: 'class ${1:Name}:' + String.fromCharCode(10) + '	def __init__(self${2}):' + String.fromCharCode(10) + '		${0}', meta: 'vorlage' },
+  { value: 'try', snippet: 'try:' + String.fromCharCode(10) + '	${1:pass}' + String.fromCharCode(10) + 'except ${2:Exception} as fehler:' + String.fromCharCode(10) + '	print(fehler)', meta: 'vorlage' },
+  { value: 'with', snippet: 'with open("${1:datei.txt}") as datei:' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'einfach', snippet: 'for i, ${1:wert} in enumerate(${2:liste}, start=1):' + String.fromCharCode(10) + '	print(i, wert)' + String.fromCharCode(10) + '${0}', meta: 'vorlage' },
+  { value: 'main', snippet: 'if __name__ == "__main__":' + String.fromCharCode(10) + '	${0}', meta: 'vorlage' },
+  { value: 'input', snippet: 'input("${1:Frage} ")', meta: 'vorlage' },
+  { value: 'print', snippet: 'print(${0})', meta: 'vorlage' }
+];
+
 var pyCompleter = {
   getCompletions: function (ed, session, pos, prefix, callback) {
     var chain = dottedChain(session, pos);
@@ -223,6 +264,12 @@ var pyCompleter = {
     var seen = {};
     if (!chain) {
       var low = (prefix || '').toLowerCase();
+      PY_SNIPPETS.forEach(function (s) {
+        if (s.value.indexOf(low) === 0 && !seen[s.value]) {
+          seen[s.value] = true;
+          out.push({ value: s.value, snippet: s.snippet, meta: s.meta, score: 300 });
+        }
+      });
       PY_FALLBACK.forEach(function (w) {
         if (w.toLowerCase().indexOf(low) === 0 && !seen[w]) {
           seen[w] = true;
@@ -423,6 +470,153 @@ function renderExplanation(ex) {
   outEl.insertAdjacentHTML('beforeend', h);
 }
 
+function renderVariablen(liste) {
+  if (!liste || !liste.length) { return; }
+  var nl = String.fromCharCode(10);
+  var h = '<span class="vars">' + nl + '<span class="vh">[PyPad] Deine Variablen am Ende:</span>' + nl;
+  liste.forEach(function (v) {
+    h += '<span class="vt">  ' + esc(v[0]) + ' = ' + esc(v[2]) + '   (' + esc(v[1]) + ')</span>' + nl;
+  });
+  h += '</span>' + nl;
+  outEl.insertAdjacentHTML('beforeend', h);
+}
+
+function verlaufLaden() {
+  try { return JSON.parse(localStorage.getItem('pypad_verlauf') || '[]'); } catch (e) { return []; }
+}
+
+function verlaufMerken(eintrag) {
+  var liste = verlaufLaden();
+  liste.unshift(eintrag);
+  try { localStorage.setItem('pypad_verlauf', JSON.stringify(liste.slice(0, 12))); } catch (e) { }
+}
+
+function verlaufZeigen() {
+  verlaufListe = verlaufLaden();
+  if (!verlaufListe.length) { footHint.textContent = 'noch keine Laeufe'; return; }
+  var nl = String.fromCharCode(10);
+  var h = '<span class="verlauf">' + nl + '<span class="vh">[PyPad] Letzte Laeufe (anklicken = Code zurueckholen):</span>' + nl;
+  verlaufListe.forEach(function (e, i) {
+    var kennung = e.rc === 0 ? 'ok' : ('Exit ' + e.rc);
+    h += '<span class="vt">  ' + esc(e.zeit) + '  ' + kennung + (e.typ ? '  ' + esc(e.typ) : '') + '  ' + e.ms + ' ms  <a class="verlaufZeile" data-i="' + i + '">laden</a></span>' + nl;
+  });
+  h += '</span>' + nl;
+  outEl.insertAdjacentHTML('beforeend', h);
+  outEl.scrollTop = outEl.scrollHeight;
+}
+
+function autoSpeichern() {
+  if (!currentFile || !dirty) { return; }
+  var passt = /^uebung(-plus|-profi)?\.py$/.test(currentFile.name) || currentFile.dir === 'snippets';
+  if (!passt) { return; }
+  var code = getCode();
+  fetch('/file', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: currentFile.dir, name: currentFile.name, code: code })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.saved) { return; }
+    dirty = false;
+    if (currentKey && buffers[currentKey]) { buffers[currentKey] = { code: code, dirty: false }; }
+    showFileHint();
+    footHint.textContent = 'automatisch gespeichert ' + new Date().toLocaleTimeString('de-DE');
+  }).catch(function () { });
+}
+
+function darstellungAnwenden() {
+  var theme = localStorage.getItem('pypad_theme') || THEMEN[0];
+  schriftGroesse = parseInt(localStorage.getItem('pypad_schrift') || '13', 10);
+  if (isNaN(schriftGroesse)) { schriftGroesse = 13; }
+  editor.setTheme(theme);
+  editor.setFontSize(schriftGroesse + 'px');
+  document.getElementById('btnTheme').textContent = (theme === THEMEN[1]) ? '\u263e' : '\u2600';
+}
+
+function fortschrittAnzeigen() {
+  if (!fortschrittInfo) { return; }
+  var alle = lessonsEl.options.length - 1;
+  var fertig = Object.keys(fortschritt).filter(function (k) { return fortschritt[k] && fortschritt[k].erledigt; }).length;
+  fortschrittInfo.textContent = alle > 0 ? (fertig + ' von ' + alle + ' erledigt') : '';
+  if (currentFile && currentFile.dir.indexOf('lektionen/') === 0) {
+    var dir = currentFile.dir.replace('lektionen/', '');
+    btnErledigt.classList.toggle('on', !!(fortschritt[dir] && fortschritt[dir].erledigt));
+  } else {
+    btnErledigt.classList.remove('on');
+  }
+  Array.prototype.forEach.call(lessonsEl.options, function (o) {
+    if (!o.value) { return; }
+    var fertig2 = fortschritt[o.value] && fortschritt[o.value].erledigt;
+    var titel = o.textContent.replace(/^\u2713\s*/, '');
+    o.textContent = (fertig2 ? '\u2713 ' : '') + titel;
+  });
+}
+
+function ladeFortschritt() {
+  return fetch('/fortschritt').then(function (r) { return r.json(); }).then(function (d) {
+    fortschritt = d.fortschritt || {};
+    fortschrittAnzeigen();
+  }).catch(function () { });
+}
+
+function zeigeTipp() {
+  var dir = lessonsEl.value;
+  if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
+  fetch('/lektion-info?dir=' + encodeURIComponent('lektionen/' + dir))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      var tipps = (d && d.tipps) || [];
+      if (!tipps.length) { footHint.textContent = 'Für diese Lektion gibt es noch keinen Tipp'; return; }
+      var i = zeigeTipp.zaehler = (zeigeTipp.zaehler || 0);
+      var tipp = tipps[Math.min(i, tipps.length - 1)];
+      zeigeTipp.zaehler = i + 1;
+      var nl = String.fromCharCode(10);
+      outEl.insertAdjacentHTML('beforeend', '<span class="explain"><span class="el">Tipp ' + Math.min(i + 1, tipps.length) + ' von ' + tipps.length + '</span>' + nl + '<span class="et">' + esc(tipp) + '</span>' + nl + '</span>' + nl);
+      outEl.scrollTop = outEl.scrollHeight;
+    }).catch(function () { });
+}
+
+function pruefen() {
+  var dir = lessonsEl.value;
+  if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
+  footHint.textContent = 'pruefe ...';
+  fetch('/pruefen', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: 'lektionen/' + dir, code: getCode(), stufe: stufeEl.value })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    var nl = String.fromCharCode(10);
+    if (d.error) { footHint.textContent = 'Fehler: ' + d.error; return; }
+    var faelle = d.faelle || [];
+    var ok = faelle.filter(function (f) { return f.ok; }).length;
+    var h = '<span class="explain" style="border-left-color:#3ddc84"><span class="eh" style="color:#3ddc84">Pruefung: ' + ok + ' von ' + faelle.length + ' geschafft</span>' + nl;
+    faelle.forEach(function (f) {
+      h += '<span class="et">  ' + (f.ok ? '\u2705' : '\u274c') + ' ' + esc(f.beschreibung) + '</span>' + nl;
+      if (!f.ok) {
+        if (f.fehler) { h += '<span class="em">      Programm hat einen Fehler: ' + esc(f.fehler) + '</span>' + nl; }
+        else {
+          if (f.erwartet) { h += '<span class="dim">      erwartet: ' + esc(f.erwartet) + '</span>' + nl; }
+          if (f.bekommen) { h += '<span class="dim">      bekommen: ' + esc(f.bekommen) + '</span>' + nl; }
+        }
+      }
+    });
+    h += '</span>' + nl;
+    outEl.insertAdjacentHTML('beforeend', h);
+    outEl.scrollTop = outEl.scrollHeight;
+    footHint.textContent = ok === faelle.length ? 'alles richtig!' : 'noch nicht alles - schau in die Liste';
+    if (faelle.length && ok === faelle.length) { fortschrittSetzen(true); }
+  }).catch(function (e) { footHint.textContent = 'keine Verbindung'; });
+}
+
+function fortschrittSetzen(erledigt) {
+  var dir = lessonsEl.value;
+  if (!dir) { return; }
+  fetch('/fortschritt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: dir, erledigt: erledigt })
+  }).then(function () { return ladeFortschritt(); }).catch(function () { });
+}
+
 function clearErrorHighlight() {
   editor.session.setAnnotations(editor.session.getAnnotations().filter(function (a) { return a.type !== 'error'; }));
   if (errorMarker !== null) {
@@ -543,6 +737,14 @@ function finishRun(d) {
     appendChunk('err', '\n[PyPad] Fehler in Zeile ' + err.line + ': ' + err.message + '\n');
   }
   renderExplanation(d.explanation);
+  renderVariablen(d.vars);
+  verlaufMerken({
+    zeit: new Date().toLocaleTimeString('de-DE'),
+    rc: d.returncode,
+    ms: d.ms,
+    typ: (ex && ex.type) ? ex.type : '',
+    code: getCode()
+  });
   appendChunk('dim', '\n[fertig - Exit ' + d.returncode + ', ' + d.ms + ' ms]\n');
   outEl.scrollTop = outEl.scrollHeight;
   if (statusEl.classList.contains('clickable')) {
@@ -637,10 +839,17 @@ function enterSlot(key, file, text) {
   editor.focus();
 }
 
+function dateiFuer(kind) {
+  if (kind === 'LOESUNG') { return 'LOESUNG.py'; }
+  if (kind === 'beispiel') { return 'beispiel.py'; }
+  if (kind === 'uebung') { return stufeEl.value + '.py'; }
+  return kind + '.py';
+}
+
 async function openLesson(kind) {
   var dir = lessonsEl.value;
   if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
-  var name = (kind === 'LOESUNG') ? 'LOESUNG.py' : kind + '.py';
+  var name = dateiFuer(kind);
   var folder = 'lektionen/' + dir;
   var key = slotKey(folder, name);
   var file = { dir: folder, name: name };
@@ -653,7 +862,12 @@ async function openLesson(kind) {
   }
   try {
     var res = await fetch('/file?dir=' + encodeURIComponent(folder) + '&name=' + encodeURIComponent(name));
-    if (!res.ok) { loadHint.textContent = 'nicht gefunden: ' + name; return; }
+    if (!res.ok) {
+      loadHint.textContent = (kind === 'uebung' && name !== 'uebung.py')
+        ? ('Diese Stufe gibt es hier noch nicht: ' + name + ' - nimm "Übung"')
+        : ('nicht gefunden: ' + name);
+      return;
+    }
     var data = await res.json();
     buffers[key] = { code: data.code, dirty: false };
     enterSlot(key, file, data.code);
@@ -751,6 +965,8 @@ editor.on('change', function () {
   if (loading) { return; }
   dirty = true;
   showFileHint();
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(autoSpeichern, 1500);
 });
 
 window.addEventListener('beforeunload', function (e) {
@@ -768,8 +984,48 @@ document.addEventListener('keydown', function (e) {
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault();
     if (!currentRun) { startRun(); }
+  } else if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    saveFile();
   }
 });
+
+document.getElementById('btnFontUp').addEventListener('click', function () {
+  schriftGroesse = Math.min(22, schriftGroesse + 1);
+  localStorage.setItem('pypad_schrift', String(schriftGroesse));
+  darstellungAnwenden();
+});
+document.getElementById('btnFontDown').addEventListener('click', function () {
+  schriftGroesse = Math.max(10, schriftGroesse - 1);
+  localStorage.setItem('pypad_schrift', String(schriftGroesse));
+  darstellungAnwenden();
+});
+document.getElementById('btnTheme').addEventListener('click', function () {
+  var jetzt = localStorage.getItem('pypad_theme') || THEMEN[0];
+  localStorage.setItem('pypad_theme', jetzt === THEMEN[0] ? THEMEN[1] : THEMEN[0]);
+  darstellungAnwenden();
+});
+document.getElementById('btnVerlauf').addEventListener('click', verlaufZeigen);
+document.getElementById('btnTipp').addEventListener('click', zeigeTipp);
+document.getElementById('btnPruefen').addEventListener('click', pruefen);
+btnErledigt.addEventListener('click', function () {
+  var dir = lessonsEl.value;
+  if (!dir) { return; }
+  var jetzt = !!(fortschritt[dir] && fortschritt[dir].erledigt);
+  fortschrittSetzen(!jetzt);
+});
+outEl.addEventListener('click', function (e) {
+  var t = e.target;
+  if (t && t.classList && t.classList.contains('verlaufZeile')) {
+    e.preventDefault();
+    var eintrag = verlaufListe[parseInt(t.getAttribute('data-i'), 10)];
+    if (eintrag && eintrag.code) {
+      setCode(eintrag.code);
+      footHint.textContent = 'aus dem Verlauf geladen (' + eintrag.zeit + ')';
+    }
+  }
+});
+stufeEl.addEventListener('change', function () { clearTimeout(autoTimer); });
 
 runBtn.addEventListener('click', startRun);
 stopBtn.addEventListener('click', stopRun);
@@ -810,7 +1066,8 @@ if (location.protocol === 'file:') {
 }
 
 refreshFiles();
-loadLessons();
+loadLessons().then(ladeFortschritt);
+darstellungAnwenden();
 </script>
 </body>
 </html>
