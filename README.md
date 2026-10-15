@@ -15,6 +15,13 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Echte Live-Eingabe:** `input()` funktioniert wie im Terminal — unten tippen, Enter
 - **■ Stopp** beendet laufende Programme (auch Endlosschleifen; Kindprozesse werden mitbeendet),
   Standard-Zeitlimit 300 s
+- **Fehler springen ins Auge:** läuft etwas schief, wird die betroffene Zeile im Editor **rot
+  hervorgehoben** (blinkt kurz auf), im Rand erscheint ein Fehlersymbol mit der Meldung und der
+  Cursor springt genau dorthin. In der Statuszeile steht „Fehler in Zeile N" — anklicken springt zurück.
+- **Hinweise im Code:** typische Stolpersteine werden schon **vor** dem Lauf markiert —
+  unbenutzter Import, Zuweisung ohne Verwendung, `except:` ohne Typ, Vergleich mit `== None`.
+  Gelbe Zeilenmarkierung, Symbol im Rand, Liste in der Ausgabe mit **anklickbaren Zeilennummern**,
+  dazu ein Knopf **„→ Zeile N"** in der Ausgabe, der zur Fehler-/Hinweiszeile springt.
 - **Snippets** speichern / laden / löschen
 - **Lernbereich:** Lektionen mit *Beispiel / Übung / Lösung*; Wechseln verliert keine Eingaben,
   Übungen werden automatisch gesichert

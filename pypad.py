@@ -6,6 +6,7 @@ Start:  PyPad.command doppelklicken   (oder: python3 pypad.py)
 Alles ist lokal: Server nur auf 127.0.0.1, Ausfuehrung mit dem installierten Python.
 Optionen (Umgebungsvariablen): PYPAD_PORT, PYPAD_TIMEOUT, PYPAD_MAX_RUNTIME, PYPAD_NO_BROWSER=1
 """
+import ast
 import builtins
 import importlib
 import json
@@ -192,6 +193,100 @@ def complete_words(code, prefix):
             seen.add(name)
             words.append(name)
     return words
+
+
+def scope_nodes(scope):
+    """Alle Knoten eines Scopes, aber nicht in tiefere Scopes (Funktionen/Klassen) hinein."""
+    result = []
+    stack = list(ast.iter_child_nodes(scope))
+    while stack:
+        node = stack.pop()
+        result.append(node)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        stack.extend(ast.iter_child_nodes(node))
+    return result
+
+
+def lint_code(code):
+    """Einfache Hinweise auf typische Stolpersteine - ersetzt keinen echten Linter."""
+    try:
+        tree = ast.parse(code or "")
+    except SyntaxError:
+        return []
+
+    def used(name):
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id == name and isinstance(node.ctx, ast.Load):
+                return True
+        return False
+
+    hints = []
+
+    # unbenutzte Importe
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                bound = alias.asname or alias.name.split(".")[0]
+                if not used(bound):
+                    hints.append({"line": node.lineno, "col": 0,
+                                  "text": "Import '" + bound + "' wird nie benutzt"})
+        elif isinstance(node, ast.ImportFrom):
+            if node.module == "__future__":
+                continue
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                bound = alias.asname or alias.name
+                if not used(bound):
+                    hints.append({"line": node.lineno, "col": 0,
+                                  "text": "'" + bound + "' importiert, aber nie benutzt"})
+
+    # Zuweisungen, die nie gelesen werden (nur einfache Zuweisungen, keine Schleifenvariablen)
+    scopes = [tree] + [n for n in ast.walk(tree)
+                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    schon_gemeldet = set()
+    for scope in scopes:
+        stores = {}
+        loads = set()
+        for node in scope_nodes(scope):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        stores.setdefault(target.id, target)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                stores.setdefault(node.target.id, node.target)
+            elif isinstance(node, ast.Name):
+                if isinstance(node.ctx, ast.Load):
+                    loads.add(node.id)
+                elif isinstance(node.ctx, ast.Store):
+                    loads.discard(node.id)
+        if scope is tree:
+            loads |= {n.id for n in ast.walk(tree)
+                      if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        for name, node in stores.items():
+            if name.startswith("_") or name in loads or node.lineno in schon_gemeldet:
+                continue
+            schon_gemeldet.add(node.lineno)
+            hints.append({"line": node.lineno, "col": getattr(node, "col_offset", 0),
+                          "text": "'" + name + "' wird zugewiesen, aber nirgends benutzt"})
+
+    # except ohne Typ
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ExceptHandler) and node.type is None:
+            hints.append({"line": node.lineno, "col": 0,
+                          "text": "except: faengt ALLE Fehler - besser 'except Exception:'"})
+
+    # Vergleich mit None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Compare):
+            for op, comp in zip(node.ops, node.comparators):
+                if isinstance(comp, ast.Constant) and comp.value is None and isinstance(op, (ast.Eq, ast.NotEq)):
+                    hints.append({"line": getattr(comp, "lineno", node.lineno), "col": 0,
+                                  "text": "Vergleich mit None: 'is None' / 'is not None' benutzen"})
+
+    hints.sort(key=lambda h: (h["line"], h["text"]))
+    return hints
 
 
 class Run:
@@ -416,7 +511,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             run = Run(code, data.get("stdin") or "")
             register(run)
-            self._json({"id": run.id})
+            self._json({"id": run.id, "warnings": lint_code(code)})
             return
 
         if url.path == "/run/poll":

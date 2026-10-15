@@ -40,6 +40,10 @@ main{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
   border-left:3px solid #ff6b6b;animation:pypadBlink 1.1s ease-in-out 3}
 @keyframes pypadBlink{0%,100%{background:rgba(255,90,90,.22)}50%{background:rgba(255,90,90,.6)}}
 .hint.clickable{cursor:pointer;color:var(--err);text-decoration:underline}
+.headtools{display:flex;align-items:center;gap:8px}
+button.mini{padding:3px 8px;font-size:11px;border-radius:6px}
+.ace_marker-layer .pypad-warn{position:absolute;z-index:19;background:rgba(255,200,80,.13);border-left:3px solid rgba(255,200,80,.8)}
+#out a.jump{color:var(--acc);text-decoration:underline;cursor:pointer}
 pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;
   font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#0c1120}
 #out .err{color:var(--err)}
@@ -90,7 +94,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   </section>
 
   <section class="pane out-pane">
-    <div class="pane-head"><span>Ausgabe</span><span class="hint" id="status"></span></div>
+    <div class="pane-head"><span>Ausgabe</span><span class="headtools"><button id="btnJump" class="mini" hidden>&#8594; Zeile</button><span class="hint" id="status"></span></span></div>
     <pre id="out"></pre>
     <div class="liverow">
       <span class="chev">&gt;</span>
@@ -133,6 +137,7 @@ var footHint = document.getElementById('footHint');
 var stdinHint = document.getElementById('stdinHint');
 var lessonsEl = document.getElementById('lessons');
 var loadHint = document.getElementById('loadHint');
+var btnJump = document.getElementById('btnJump');
 
 var currentRun = null;
 var pollTimer = null;
@@ -143,6 +148,7 @@ var currentKey = null;
 var dirty = false;
 var loading = false;
 var errBuffer = '';
+var warnMarkers = [];
 var errorMarker = null;
 var errorRow = null;
 var AceRange = ace.require('ace/range').Range;
@@ -312,6 +318,7 @@ function startRun() {
   pollFails = 0;
   errBuffer = '';
   clearErrorHighlight();
+  clearWarnings();
   busy(true);
   setStatus('laeuft ...');
   fetch('/run/start', {
@@ -326,6 +333,7 @@ function startRun() {
       return;
     }
     currentRun = d.id;
+    applyWarnings(d.warnings);
     polls();
     pollTimer = setInterval(polls, 150);
   }).catch(function (e) {
@@ -376,14 +384,60 @@ function lostConnection() {
 }
 
 function clearErrorHighlight() {
-  editor.session.clearAnnotations();
+  editor.session.setAnnotations(editor.session.getAnnotations().filter(function (a) { return a.type !== 'error'; }));
   if (errorMarker !== null) {
     editor.session.removeMarker(errorMarker);
     errorMarker = null;
   }
   errorRow = null;
   statusEl.classList.remove('clickable');
+  btnJump.hidden = true;
 }
+
+function clearWarnings() {
+  editor.session.setAnnotations(editor.session.getAnnotations().filter(function (a) { return a.type !== 'warning'; }));
+  warnMarkers.forEach(function (mid) { editor.session.removeMarker(mid); });
+  warnMarkers = [];
+}
+
+function jumpToLine(row) {
+  row = Math.max(0, Math.min(row, editor.session.getLength() - 1));
+  editor.scrollToLine(row, true, true, function () {});
+  editor.moveCursorTo(row, 0);
+  editor.clearSelection();
+  editor.focus();
+}
+
+function applyWarnings(list) {
+  clearWarnings();
+  if (!list || !list.length) { return; }
+  var ann = editor.session.getAnnotations().filter(function (a) { return a.type !== 'warning'; });
+  list.forEach(function (w) {
+    var row = Math.max(0, Math.min(w.line - 1, editor.session.getLength() - 1));
+    ann.push({ row: row, column: w.col || 0, text: w.text, type: 'warning' });
+    warnMarkers.push(editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-warn', 'fullLine'));
+  });
+  editor.session.setAnnotations(ann);
+  var nl = String.fromCharCode(10);
+  var html = '<span class="sys">[PyPad] ' + list.length + (list.length === 1 ? ' Hinweis' : ' Hinweise') + ':</span>' + nl;
+  list.forEach(function (w) {
+    html += '<span class="dim">  Zeile <a class="jump" data-line="' + (w.line - 1) + '">' + w.line + '</a>: ' + esc(w.text) + '</span>' + nl;
+  });
+  outEl.insertAdjacentHTML('beforeend', html);
+  if (errorRow === null) {
+    btnJump.hidden = false;
+    btnJump.textContent = '\u2192 Zeile ' + list[0].line;
+    btnJump.onclick = function () { jumpToLine(list[0].line - 1); };
+  }
+}
+
+outEl.addEventListener('click', function (e) {
+  var t = e.target;
+  if (t && t.classList && t.classList.contains('jump')) {
+    e.preventDefault();
+    jumpToLine(parseInt(t.getAttribute('data-line'), 10));
+  }
+});
 
 // Aus dem Traceback die Zeile (und Spalte) im eigenen Code herauslesen.
 function parseError(text) {
@@ -413,12 +467,17 @@ function highlightError(err) {
   if (!err) { return; }
   var last = editor.session.getLength() - 1;
   var row = Math.max(0, Math.min(err.line - 1, last));
-  editor.session.setAnnotations([{ row: row, column: err.column, text: err.message, type: 'error' }]);
+  var ann = editor.session.getAnnotations().filter(function (a) { return a.type !== 'error'; });
+  ann.push({ row: row, column: err.column, text: err.message, type: 'error' });
+  editor.session.setAnnotations(ann);
   errorMarker = editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-error', 'fullLine');
   errorRow = row;
   editor.scrollToLine(row, true, true, function () {});
   editor.moveCursorTo(row, err.column);
   statusEl.classList.add('clickable');
+  btnJump.hidden = false;
+  btnJump.textContent = '\u2192 Zeile ' + err.line;
+  btnJump.onclick = function () { jumpToLine(row); };
 }
 
 function finishRun(d) {
@@ -665,6 +724,8 @@ sendBtn.addEventListener('click', sendLine);
 document.getElementById('btnClear').addEventListener('click', function () {
   outEl.innerHTML = '';
   setStatus('');
+  clearErrorHighlight();
+  clearWarnings();
 });
 document.getElementById('btnLoad').addEventListener('click', loadFile);
 document.getElementById('btnSave').addEventListener('click', saveFile);
