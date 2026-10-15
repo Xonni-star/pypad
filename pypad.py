@@ -285,6 +285,87 @@ def lint_code(code):
                     hints.append({"line": getattr(comp, "lineno", node.lineno), "col": 0,
                                   "text": "Vergleich mit None: 'is None' / 'is not None' benutzen"})
 
+    # Namen sammeln, die irgendwo im Code gesetzt werden (Store, Parameter, Import, def/class)
+    erste_stelle = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            erste_stelle.setdefault(node.id, node.lineno)
+        elif isinstance(node, ast.arg):
+            erste_stelle.setdefault(node.arg, node.lineno)
+        elif isinstance(node, ast.alias):
+            erste_stelle.setdefault((node.asname or node.name).split(".")[0], getattr(node, "lineno", 0))
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            erste_stelle.setdefault(node.name, node.lineno)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            erste_stelle.setdefault(node.name, node.lineno)
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            for name in node.names:
+                erste_stelle.setdefault(name, node.lineno)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and getattr(node, "name", None):
+            erste_stelle.setdefault(node.name, node.lineno)
+
+    # nur die Stellen auf Modulebene (ohne Funktionen/Klassen) - fuer "benutzt vor dem Setzen"
+    modul_stores = set()
+    for node in scope_nodes(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            modul_stores.add(node.id)
+
+    stern_import = any(isinstance(n, ast.ImportFrom) and any(a.name == "*" for a in n.names)
+                       for n in ast.walk(tree))
+
+    gemeldet = set()
+    for node in scope_nodes(tree):   # nur Modulebene: Nutzung vor der Zuweisung
+        if not (isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)):
+            continue
+        name = node.id
+        if name in BUILTIN_NAMES or name in ("__file__", "__name__", "__doc__"):
+            continue
+        if name not in erste_stelle and not stern_import:
+            key = (node.lineno, name)
+            if key not in gemeldet:
+                gemeldet.add(key)
+                hints.append({"line": node.lineno, "col": node.col_offset,
+                              "text": "'" + name + "' ist nirgends definiert (Tippfehler?)"})
+        elif name in modul_stores and erste_stelle.get(name, 0) > node.lineno:
+            key = (node.lineno, name)
+            if key not in gemeldet:
+                gemeldet.add(key)
+                hints.append({"line": node.lineno, "col": node.col_offset,
+                              "text": "'" + name + "' wird benutzt, bevor es gesetzt wird"})
+
+    # Funktionen, die nie einen Wert zurueckgeben - aber deren Ergebnis benutzt wird
+    eltern = {}
+    for parent in ast.walk(tree):
+        for child in ast.iter_child_nodes(parent):
+            eltern[id(child)] = parent
+
+    def gibt_wert(tree_scope):
+        if any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(tree_scope)):
+            return True
+        if any(isinstance(n, ast.Return) and n.value is not None for n in ast.walk(tree_scope)):
+            return True
+        body = getattr(tree_scope, "body", [])
+        if body and isinstance(body[-1], ast.Raise):
+            return True
+        return False
+
+    ohne_wert = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not gibt_wert(node):
+            ohne_wert.setdefault(node.name, node.lineno)
+
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            continue
+        name = node.func.id
+        if name not in ohne_wert:
+            continue
+        parent = eltern.get(id(node))
+        if isinstance(parent, ast.Expr):
+            continue   # Ergebnis wird gar nicht benutzt - kein Problem
+        hints.append({"line": node.lineno, "col": 0,
+                      "text": "Funktion '" + name + "' gibt nichts zurueck (None) - das Ergebnis wird trotzdem benutzt"})
+
     hints.sort(key=lambda h: (h["line"], h["text"]))
     return hints
 

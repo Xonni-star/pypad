@@ -19,7 +19,9 @@ ausgeführt wird dein Code mit dem installierten Python.
   hervorgehoben** (blinkt kurz auf), im Rand erscheint ein Fehlersymbol mit der Meldung und der
   Cursor springt genau dorthin. In der Statuszeile steht „Fehler in Zeile N" — anklicken springt zurück.
 - **Hinweise im Code:** typische Stolpersteine werden schon **vor** dem Lauf markiert —
-  unbenutzter Import, Zuweisung ohne Verwendung, `except:` ohne Typ, Vergleich mit `== None`.
+  unbenutzter Import, Zuweisung ohne Verwendung, `except:` ohne Typ, Vergleich mit `== None`,
+  Name **nirgends definiert** (Tippfehler), Nutzung **vor** der Zuweisung und
+  „Funktion gibt nichts zurück (None), Ergebnis wird trotzdem benutzt".
   Gelbe Zeilenmarkierung, Symbol im Rand, Liste in der Ausgabe mit **anklickbaren Zeilennummern**,
   dazu ein Knopf **„→ Zeile N"** in der Ausgabe, der zur Fehler-/Hinweiszeile springt.
 - **Snippets** speichern / laden / löschen
