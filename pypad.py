@@ -710,6 +710,11 @@ class Run:
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         env["MPLBACKEND"] = "Agg"
+        start_kwargs = {}
+        if os.name == "posix":
+            start_kwargs["start_new_session"] = True   # eigene Prozessgruppe (killpg)
+        else:
+            start_kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         self.proc = subprocess.Popen(
             [PYTHON, "-u", str(runner), str(script), str(self.vars_path)],
             stdin=subprocess.PIPE,
@@ -717,7 +722,7 @@ class Run:
             stderr=subprocess.PIPE,
             cwd=str(WORKDIR),
             env=env,
-            start_new_session=True,
+            **start_kwargs,
         )
         threading.Thread(target=self._reader, args=(self.proc.stdout, "out"), daemon=True).start()
         threading.Thread(target=self._reader, args=(self.proc.stderr, "err"), daemon=True).start()
@@ -767,13 +772,16 @@ class Run:
                 return False
 
     def kill(self):
-        try:
-            os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
-        except Exception:
+        if os.name == "posix":
             try:
-                self.proc.kill()
+                os.killpg(os.getpgid(self.proc.pid), getattr(signal, "SIGKILL", signal.SIGTERM))
+                return
             except Exception:
                 pass
+        try:
+            self.proc.kill()
+        except Exception:
+            pass
 
     def snapshot(self, start):
         with self.lock:
