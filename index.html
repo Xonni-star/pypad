@@ -69,6 +69,10 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
 #out .sys{color:#7fd1a8}
 #out .echo{color:#9fb0d8}
 .liverow{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#0e1524;border-top:1px solid var(--line)}
+.dbg{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#1b2338;border-top:1px solid var(--line);flex-wrap:wrap}
+.dbg .dbgzeile{color:#ffd479;font-weight:700;font-size:12px;min-width:64px}
+.dbg #dbgVars{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#d7e5ff}
+.ace_marker-layer .pypad-debug{position:absolute;z-index:22;background:rgba(255,212,121,.3);border-left:3px solid #ffd479}
 .liverow .chev{color:var(--acc);font:13px/1.5 ui-monospace,Menlo,monospace}
 .liverow input{flex:1;background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 10px;
   font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;outline:none}
@@ -122,6 +126,13 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <section class="pane out-pane">
     <div class="pane-head"><span>Ausgabe</span><span class="headtools"><button id="btnJump" class="mini" hidden>&#8594; Zeile</button><span class="hint" id="status"></span></span></div>
     <pre id="out"></pre>
+    <div class="dbg" id="dbgPanel" hidden>
+      <span class="dbgzeile" id="dbgZeile">bereit</span>
+      <button id="btnSchritt" class="mini">&#9656; Schritt</button>
+      <button id="btnWeiter" class="mini">&#9656;&#9656; Weiter</button>
+      <button id="btnDbgStop" class="mini">&#9632; Ende</button>
+      <span class="hint" id="dbgVars"></span>
+    </div>
     <div class="liverow">
       <span class="chev">&gt;</span>
       <input id="live" type="text" placeholder="Eingabe an das laufende Programm ... (Enter)" disabled>
@@ -138,6 +149,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
 <footer>
   <button id="btnRun" class="run">&#9654; Ausfuehren</button>
   <button id="btnStop" class="stop" disabled>&#9632; Stopp</button>
+  <button id="btnDebug" title="Zeile fuer Zeile ablaufen lassen">&#128027; Debug</button>
   <button id="btnClear">Ausgabe leeren</button>
   <button id="btnVerlauf">Verlauf</button>
   <span class="hint" id="footHint"></span>
@@ -166,6 +178,13 @@ var stdinHint = document.getElementById('stdinHint');
 var lessonsEl = document.getElementById('lessons');
 var loadHint = document.getElementById('loadHint');
 var btnJump = document.getElementById('btnJump');
+var dbgPanel = document.getElementById('dbgPanel');
+var dbgZeile = document.getElementById('dbgZeile');
+var dbgVars = document.getElementById('dbgVars');
+var debugRun = null;
+var debugTimer = null;
+var debugFrom = 0;
+var debugMarker = null;
 var stufeEl = document.getElementById('stufe');
 var btnErledigt = document.getElementById('btnErledigt');
 var fortschrittInfo = document.getElementById('fortschrittInfo');
@@ -370,7 +389,7 @@ function busy(state) {
 }
 
 function startRun() {
-  if (currentRun) { return; }
+  if (currentRun || debugRun) { return; }
   outEl.innerHTML = '';
   nextIndex = 0;
   promptWanted = false;
@@ -615,6 +634,81 @@ function fortschrittSetzen(erledigt) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dir: dir, erledigt: erledigt })
   }).then(function () { return ladeFortschritt(); }).catch(function () { });
+}
+
+function debugMarkerZeigen(row) {
+  if (debugMarker !== null) { editor.session.removeMarker(debugMarker); }
+  debugMarker = editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-debug', 'fullLine');
+}
+
+function debugStart() {
+  if (currentRun || debugRun) { return; }
+  outEl.innerHTML = '';
+  errBuffer = '';
+  nextIndex = 0;
+  clearErrorHighlight();
+  clearWarnings();
+  dbgPanel.hidden = false;
+  dbgZeile.textContent = 'startet ...';
+  dbgVars.textContent = '';
+  fetch('/debug/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: getCode() })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.id) { dbgZeile.textContent = 'Start fehlgeschlagen'; return; }
+    debugRun = d.id;
+    debugFrom = 0;
+    debugTimer = setInterval(debugPoll, 200);
+  }).catch(function () { dbgZeile.textContent = 'keine Verbindung'; });
+}
+
+function debugPoll() {
+  if (!debugRun) { return; }
+  fetch('/debug/poll', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: debugRun, from: debugFrom })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) { return; }
+    var stick = nearBottom();
+    (d.chunks || []).forEach(function (c) {
+      if (c.t === 'err') { appendChunk('err', c.s); errBuffer += c.s; }
+      else if (c.t === 'sys') { appendChunk('sys', c.s); }
+      else { appendChunk('out', c.s); }
+    });
+    debugFrom = d.next;
+    if (stick) { outEl.scrollTop = outEl.scrollHeight; }
+    if (d.zeile) {
+      dbgZeile.textContent = 'Zeile ' + d.zeile;
+      debugMarkerZeigen(d.zeile - 1);
+      editor.scrollToLine(d.zeile - 1, true, true, function () {});
+    } else if (!d.done) {
+      dbgZeile.textContent = 'bereit';
+    }
+    var teile = (d.variablen || []).map(function (v) { return v[0] + ' = ' + v[2]; });
+    dbgVars.textContent = teile.length ? teile.join('   ') : '';
+    if (d.done) { debugEnde(d); }
+  }).catch(function () { });
+}
+
+function debugEnde(d) {
+  clearInterval(debugTimer);
+  debugTimer = null;
+  if (debugMarker !== null) { editor.session.removeMarker(debugMarker); debugMarker = null; }
+  debugRun = null;
+  dbgZeile.textContent = 'fertig (Exit ' + d.returncode + ')';
+  appendChunk('dim', '\n[Debug beendet - Exit ' + d.returncode + ', ' + d.ms + ' ms]\n');
+  outEl.scrollTop = outEl.scrollHeight;
+}
+
+function debugBefehl(was) {
+  if (!debugRun) { return; }
+  fetch('/debug/befehl', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: debugRun, befehl: was })
+  }).catch(function () { });
 }
 
 function clearErrorHighlight() {
@@ -1028,6 +1122,10 @@ outEl.addEventListener('click', function (e) {
 stufeEl.addEventListener('change', function () { clearTimeout(autoTimer); });
 
 runBtn.addEventListener('click', startRun);
+document.getElementById('btnDebug').addEventListener('click', debugStart);
+document.getElementById('btnSchritt').addEventListener('click', function () { debugBefehl('step'); });
+document.getElementById('btnWeiter').addEventListener('click', function () { debugBefehl('run'); });
+document.getElementById('btnDbgStop').addEventListener('click', function () { debugBefehl('stop'); });
 stopBtn.addEventListener('click', stopRun);
 sendBtn.addEventListener('click', sendLine);
 document.getElementById('btnClear').addEventListener('click', function () {

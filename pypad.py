@@ -198,6 +198,9 @@ def complete_words(code, prefix):
 RUNNER_SOURCE = "\"\"\"PyPad-Runner: fuehrt den Code aus und schreibt danach die Variablen weg.\n\nWird von pypad.py automatisch erzeugt. Absichtlich so gebaut, dass Ausgabe und\nFehlermeldungen genau wie bei \"python3 main.py\" aussehen.\n\"\"\"\nimport json\nimport sys\nimport traceback\n\npfad = sys.argv[1]\nausgabe_pfad = sys.argv[2] if len(sys.argv) > 2 else None\n\nsys.argv = [pfad]\nns = {\"__name__\": \"__main__\", \"__file__\": pfad}\n\n\ndef _kurz(wert):\n    try:\n        text = repr(wert)\n    except Exception:\n        text = \"<nicht darstellbar>\"\n    text = \" \".join(text.split())\n    return text if len(text) <= 120 else text[:117] + \"...\"\n\n\ndef _sammeln():\n    wichtig = []\n    for name in sorted(ns):\n        if name.startswith(\"__\"):\n            continue\n        wert = ns[name]\n        art = type(wert).__name__\n        if art in (\"module\", \"function\", \"builtin_function_or_method\", \"type\", \"method\", \"classmethod\"):\n            continue\n        wichtig.append([name, art, _kurz(wert)])\n    return wichtig\n\n\ndef _wegschreiben():\n    if not ausgabe_pfad:\n        return\n    try:\n        with open(ausgabe_pfad, \"w\", encoding=\"utf-8\") as fh:\n            json.dump(_sammeln(), fh)\n    except Exception:\n        pass\n\n\ntry:\n    quelle = open(pfad, encoding=\"utf-8\").read()\n    code = compile(quelle, pfad, \"exec\")\nexcept SyntaxError as fehler:\n    traceback.print_exception(type(fehler), fehler, None)\n    status = 1\nelse:\n    status = 0\n    try:\n        exec(code, ns)\n    except SystemExit as fehler:\n        if isinstance(fehler.code, int):\n            status = fehler.code\n        else:\n            status = 0 if fehler.code is None else 1\n    except BaseException as fehler:   # noqa: BLE001 - genau wie Python selbst behandeln\n        tb = sys.exc_info()[2]\n        traceback.print_exception(type(fehler), fehler, tb.tb_next if tb else None)\n        status = 1\n    finally:\n        _wegschreiben()\n\nsys.exit(status)\n"
 
 
+DEBUG_RUNNER_SOURCE = "\"\"\"PyPad-Debug-Runner: haelt nach jeder Zeile an und wartet auf einen Befehl.\n\nSteuerung ueber Dateien im Ordner argv[2]:\n  state.json    - wird bei jedem Halt geschrieben (Zeile + Variablen)\n  command.txt   - \"step\" (naechste Zeile) oder \"run\" (bis zum Ende laufen)\n\"\"\"\nimport json\nimport os\nimport sys\nimport time\nimport traceback\n\npfad = sys.argv[1]\nsteuer = sys.argv[2]\nsys.argv = [pfad]\nstate_pfad = os.path.join(steuer, \"state.json\")\nbefehl_pfad = os.path.join(steuer, \"command.txt\")\n\nns = {\"__name__\": \"__main__\", \"__file__\": pfad}\nmodus = {\"schritt\": True}\n\n\ndef _kurz(wert):\n    try:\n        text = repr(wert)\n    except Exception:\n        text = \"<nicht darstellbar>\"\n    text = \" \".join(text.split())\n    return text if len(text) <= 90 else text[:87] + \"...\"\n\n\ndef _variablen(daten):\n    wichtig = []\n    for name in sorted(daten):\n        if name.startswith(\"__\"):\n            continue\n        wert = daten[name]\n        art = type(wert).__name__\n        if art in (\"module\", \"function\", \"builtin_function_or_method\", \"type\", \"method\",\n                   \"classmethod\", \"staticmethod\", \"traceback\", \"frame\"):\n            continue\n        wichtig.append([name, art, _kurz(wert)])\n    return wichtig\n\n\ndef _halt(zeile, lokal):\n    try:\n        with open(state_pfad, \"w\", encoding=\"utf-8\") as fh:\n            json.dump({\"zeile\": zeile, \"variablen\": _variablen(lokal)}, fh)\n    except Exception:\n        pass\n    while True:\n        if os.path.exists(befehl_pfad):\n            try:\n                with open(befehl_pfad, encoding=\"utf-8\") as fh:\n                    befehl = fh.read().strip()\n                os.remove(befehl_pfad)\n            except Exception:\n                befehl = \"\"\n            if befehl == \"run\":\n                modus[\"schritt\"] = False\n            return\n        time.sleep(0.04)\n\n\ndef tracer(frame, event, arg):\n    if event != \"line\" or frame.f_code.co_filename != pfad:\n        return tracer if frame.f_code.co_filename == pfad else None\n    if modus[\"schritt\"]:\n        _halt(frame.f_lineno, frame.f_locals)\n    return tracer\n\n\ntry:\n    quelle = open(pfad, encoding=\"utf-8\").read()\n    code = compile(quelle, pfad, \"exec\")\nexcept SyntaxError as fehler:\n    traceback.print_exception(type(fehler), fehler, None)\n    sys.exit(1)\n\nstatus = 0\ntry:\n    sys.settrace(tracer)\n    exec(code, ns)\nexcept SystemExit as fehler:\n    status = fehler.code if isinstance(fehler.code, int) else (0 if fehler.code is None else 1)\nexcept BaseException as fehler:\n    tb = sys.exc_info()[2]\n    traceback.print_exception(type(fehler), fehler, tb.tb_next if tb else None)\n    status = 1\nfinally:\n    sys.settrace(None)\n    try:\n        with open(os.path.join(steuer, \"fertig.txt\"), \"w\") as fh:\n            fh.write(str(status))\n    except Exception:\n        pass\nsys.exit(status)\n"
+
+
 def _namen_im_code(code):
     """Alle Bezeichner aus dem Code (fuer "Meintest du ...?")"""
     return set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code or ""))
@@ -814,6 +817,122 @@ class Run:
         }
 
 
+class DebugRun:
+    """Ein Programm im Einzelschritt-Modus."""
+
+    def __init__(self, code):
+        self.id = uuid.uuid4().hex[:12]
+        self.chunks = []
+        self.lock = threading.Lock()
+        self.done = False
+        self.returncode = None
+        self.started = time.time()
+        self.code = code
+        self.tmp = tempfile.TemporaryDirectory(prefix="pypad-dbg-")
+        base = Path(self.tmp.name)
+        script = base / "main.py"
+        script.write_text(code, encoding="utf-8")
+        runner = base / "_pypad_debug.py"
+        runner.write_text(DEBUG_RUNNER_SOURCE, encoding="utf-8")
+        self.state_path = base / "state.json"
+        self.command_path = base / "command.txt"
+        self.fertig_path = base / "fertig.txt"
+        env = dict(os.environ)
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["PYTHONUNBUFFERED"] = "1"
+        kwargs = {}
+        if os.name == "posix":
+            kwargs["start_new_session"] = True
+        else:
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        self.proc = subprocess.Popen(
+            [PYTHON, "-u", str(runner), str(script), str(base)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=str(WORKDIR),
+            env=env,
+            **kwargs,
+        )
+        threading.Thread(target=self._reader, args=(self.proc.stdout, "out"), daemon=True).start()
+        threading.Thread(target=self._reader, args=(self.proc.stderr, "err"), daemon=True).start()
+        threading.Thread(target=self._watcher, daemon=True).start()
+
+    def _add(self, kind, text):
+        with self.lock:
+            self.chunks.append({"t": kind, "s": text})
+
+    def _reader(self, pipe, kind):
+        try:
+            while True:
+                daten = os.read(pipe.fileno(), 4096)
+                if not daten:
+                    break
+                self._add(kind, daten.decode("utf-8", "replace"))
+        except (OSError, ValueError):
+            pass
+        finally:
+            try:
+                pipe.close()
+            except Exception:
+                pass
+
+    def _watcher(self):
+        try:
+            self.proc.wait(timeout=MAX_RUNTIME)
+        except subprocess.TimeoutExpired:
+            self._add("sys", "\n[PyPad] Zeitlimit von " + str(MAX_RUNTIME) + " s erreicht - Debuggen beendet.\n")
+            self.kill()
+            self.proc.wait()
+        self.returncode = self.proc.returncode
+        self.done = True
+
+    def kill(self):
+        if self.command_path.exists():
+            try:
+                self.proc.kill()
+            except Exception:
+                pass
+        if os.name == "posix":
+            try:
+                os.killpg(os.getpgid(self.proc.pid), getattr(signal, "SIGKILL", signal.SIGTERM))
+                return
+            except Exception:
+                pass
+        try:
+            self.proc.kill()
+        except Exception:
+            pass
+
+    def befehl(self, text):
+        try:
+            self.command_path.write_text(text, encoding="utf-8")
+            return True
+        except OSError:
+            return False
+
+    def zustand(self, start):
+        with self.lock:
+            chunks = self.chunks[start:]
+            total = len(self.chunks)
+        fahre = {"zeile": None, "variablen": []}
+        try:
+            if self.state_path.exists():
+                fahre = json.loads(self.state_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        return {
+            "chunks": chunks,
+            "next": total,
+            "done": self.done,
+            "returncode": self.returncode,
+            "ms": int((time.time() - self.started) * 1000),
+            "zeile": fahre.get("zeile"),
+            "variablen": fahre.get("variablen") or [],
+        }
+
+
 def register(run):
     with RUNS_LOCK:
         RUNS[run.id] = run
@@ -941,6 +1060,44 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         url = urlparse(self.path)
         data = self._body()
+
+        if url.path == "/debug/start":
+            code = data.get("code") or ""
+            if not code.strip():
+                self._json({"error": "leerer Code"}, 400)
+                return
+            lauf = DebugRun(code)
+            register(lauf)
+            self._json({"id": lauf.id})
+            return
+
+        if url.path == "/debug/poll":
+            lauf = self._run_by_id(data.get("id"))
+            if not lauf or not isinstance(lauf, DebugRun):
+                self._json({"error": "unbekannte Lauf-ID"}, 404)
+                return
+            try:
+                start = int(data.get("from") or 0)
+            except (TypeError, ValueError):
+                start = 0
+            self._json(lauf.zustand(max(0, start)))
+            return
+
+        if url.path == "/debug/befehl":
+            lauf = self._run_by_id(data.get("id"))
+            if not lauf or not isinstance(lauf, DebugRun):
+                self._json({"error": "unbekannte Lauf-ID"}, 404)
+                return
+            befehl = str(data.get("befehl") or "")
+            if befehl == "stop":
+                lauf.kill()
+                self._json({"ok": True, "gestoppt": True})
+                return
+            if befehl not in ("step", "run"):
+                self._json({"error": "unbekannter Befehl"}, 400)
+                return
+            self._json({"ok": lauf.befehl(befehl)})
+            return
 
         if url.path == "/pruefen":
             folder = resolve_dir(data.get("dir"))

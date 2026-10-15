@@ -45,6 +45,8 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Tipp-Knopf**: schrittweise Denkanstöße, ohne die Lösung zu verraten
 - **Variablen am Ende** eines Laufs werden angezeigt (Name, Wert, Typ) — erklärt die meisten Fragen
 - **Verlauf**: die letzten 12 Läufe mit Ergebnis; ein Klick holt den Code zurück
+- **Schritt-für-Schritt-Debugger** (🐞): Programm **Zeile für Zeile** ablaufen lassen — aktuelle Zeile
+  im Editor markiert, die Variablen dazu sichtbar, „Weiter" läuft bis zum Ende, „Ende" bricht ab
 - **Vorlagen** in der Autovervollständigung (`for`, `def`, `try`, `with` … als Gerüst)
 - **Auto-Speichern** von Übungen und Snippets, **Cmd+S** speichert sofort
 - **Darstellung umschaltbar**: hell/dunkel und Schriftgröße (wird gemerkt)
@@ -72,6 +74,14 @@ PyPad.bat                # Windows
 
 Der Browser öffnet sich automatisch auf `http://127.0.0.1:8765/`.
 Terminal-Fenster offen lassen; beenden mit Ctrl+C.
+
+## App und Startskripte
+
+- **macOS:** `PyPad.command` (Terminal) oder die beiliegende App-Hülle `PyPad.app` fürs Dock.
+  Hinweis: macOS schützt den Schreibtisch (TCC) — darf die App dort nicht lesen, startet sie PyPad
+  automatisch über das Terminal.
+- **Linux:** `./PyPad.sh`
+- **Windows:** `PyPad.bat`
 
 ## Selbsttest
 
