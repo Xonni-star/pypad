@@ -43,6 +43,11 @@ main{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
 .headtools{display:flex;align-items:center;gap:8px}
 button.mini{padding:3px 8px;font-size:11px;border-radius:6px}
 .ace_marker-layer .pypad-warn{position:absolute;z-index:19;background:rgba(255,200,80,.13);border-left:3px solid rgba(255,200,80,.8)}
+.ace_marker-layer .pypad-error-range{position:absolute;z-index:21;background:rgba(255,90,90,.4);
+  border-bottom:2px solid #ff6b6b;border-radius:3px}
+.ace_marker-layer .pypad-warn-range{position:absolute;z-index:20;background:rgba(255,200,80,.32);
+  border-bottom:2px solid #ffc850;border-radius:3px}
+#out .explain .ec{color:#ffd9b8;font-weight:700}
 #out a.jump{color:var(--acc);text-decoration:underline;cursor:pointer}
 #out .explain{display:block;margin:10px 0 4px;padding:10px 12px;border-left:3px solid #ffb454;
   background:#1d2233;border-radius:6px;white-space:pre-wrap}
@@ -156,6 +161,7 @@ var loading = false;
 var errBuffer = '';
 var warnMarkers = [];
 var errorMarker = null;
+var errorRangeMarker = null;
 var errorRow = null;
 var AceRange = ace.require('ace/range').Range;
 var nextIndex = 0;
@@ -396,6 +402,16 @@ function renderExplanation(ex) {
   var h = '<span class="explain">' + nl;
   h += '<span class="eh">' + esc(ex.type) + (ex.line ? ' (Zeile ' + ex.line + ')' : '') + '</span>' + nl;
   if (ex.message) { h += '<span class="em">' + esc(ex.message) + '</span>' + nl; }
+  if (ex.code) {
+    var col = ex.col || 0;
+    var end = Math.max(ex.end || col + 1, col + 1);
+    var zeiger = (typeof ex.zeiger === 'number') ? ex.zeiger : col;
+    if (zeiger < col || zeiger >= end) { zeiger = end - 1; }
+    var marks = '';
+    for (var i = col; i < end; i++) { marks += (i === zeiger) ? '^' : '~'; }
+    h += nl + '<span class="ec">  ' + esc(ex.code) + '</span>' + nl;
+    h += '<span class="ec">  ' + esc(new Array(col + 1).join(' ') + marks) + '  <-- hier ist der Fehler</span>' + nl;
+  }
   h += nl + '<span class="et">' + esc(ex.erklaerung) + '</span>' + nl;
   if (ex.tipps && ex.tipps.length) {
     h += nl + '<span class="el">Was du machen kannst:</span>' + nl;
@@ -412,6 +428,10 @@ function clearErrorHighlight() {
   if (errorMarker !== null) {
     editor.session.removeMarker(errorMarker);
     errorMarker = null;
+  }
+  if (errorRangeMarker !== null) {
+    editor.session.removeMarker(errorRangeMarker);
+    errorRangeMarker = null;
   }
   errorRow = null;
   statusEl.classList.remove('clickable');
@@ -438,8 +458,13 @@ function applyWarnings(list) {
   var ann = editor.session.getAnnotations().filter(function (a) { return a.type !== 'warning'; });
   list.forEach(function (w) {
     var row = Math.max(0, Math.min(w.line - 1, editor.session.getLength() - 1));
-    ann.push({ row: row, column: w.col || 0, text: w.text, type: 'warning' });
-    warnMarkers.push(editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-warn', 'fullLine'));
+    var start = w.col || 0;
+    ann.push({ row: row, column: start, text: w.text, type: 'warning' });
+    if (typeof w.end === 'number' && w.end > start) {
+      warnMarkers.push(editor.session.addMarker(new AceRange(row, start, row, w.end), 'pypad-warn-range', 'text'));
+    } else {
+      warnMarkers.push(editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-warn', 'fullLine'));
+    }
   });
   editor.session.setAnnotations(ann);
   var nl = String.fromCharCode(10);
@@ -486,18 +511,22 @@ function parseError(text) {
   return { line: line, column: column, message: message };
 }
 
-function highlightError(err) {
+function highlightError(err, ex) {
   clearErrorHighlight();
   if (!err) { return; }
   var last = editor.session.getLength() - 1;
   var row = Math.max(0, Math.min(err.line - 1, last));
+  var spalte = (ex && typeof ex.col === 'number') ? ex.col : (err.column || 0);
+  var ende = (ex && typeof ex.end === 'number' && ex.end > spalte) ? ex.end : spalte + 1;
+  var zeiger = (ex && typeof ex.zeiger === 'number') ? ex.zeiger : spalte;
   var ann = editor.session.getAnnotations().filter(function (a) { return a.type !== 'error'; });
-  ann.push({ row: row, column: err.column, text: err.message, type: 'error' });
+  ann.push({ row: row, column: spalte, text: err.message, type: 'error' });
   editor.session.setAnnotations(ann);
   errorMarker = editor.session.addMarker(new AceRange(row, 0, row, Infinity), 'pypad-error', 'fullLine');
+  errorRangeMarker = editor.session.addMarker(new AceRange(row, spalte, row, ende), 'pypad-error-range', 'text');
   errorRow = row;
   editor.scrollToLine(row, true, true, function () {});
-  editor.moveCursorTo(row, err.column);
+  editor.moveCursorTo(row, Math.max(0, zeiger));
   statusEl.classList.add('clickable');
   btnJump.hidden = false;
   btnJump.textContent = '\u2192 Zeile ' + err.line;
@@ -507,9 +536,10 @@ function highlightError(err) {
 function finishRun(d) {
   clearInterval(pollTimer);
   pollTimer = null;
-  var err = parseError(errBuffer);
+  var ex = d.explanation || null;
+  var err = (ex && ex.line) ? { line: ex.line, column: ex.col || 0, message: ex.message || '' } : parseError(errBuffer);
   if (err) {
-    highlightError(err);
+    highlightError(err, ex);
     appendChunk('err', '\n[PyPad] Fehler in Zeile ' + err.line + ': ' + err.message + '\n');
   }
   renderExplanation(d.explanation);

@@ -18,6 +18,13 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Fehler springen ins Auge:** läuft etwas schief, wird die betroffene Zeile im Editor **rot
   hervorgehoben** (blinkt kurz auf), im Rand erscheint ein Fehlersymbol mit der Meldung und der
   Cursor springt genau dorthin. In der Statuszeile steht „Fehler in Zeile N" — anklicken springt zurück.
+- **Die Stelle wird punktgenau gezeigt** (nicht nur die Zeile): im Editor wird genau das
+  fehlerhafte Stück eingefärbt (z. B. `10 / x`), der Cursor steht darauf, und im Erklärungs-Kasten
+  steht die Codezeile mit Zeiger:
+  ```text
+    print(10 / x)
+          ~~~^~~  <-- hier ist der Fehler
+  ```
 - **Fehler werden erklärt:** unter der Ausgabe steht ein Kasten mit **Klartext**: um welchen Fehler
   es geht, **warum** er passiert ist und **was man dagegen tun kann** — plus Tipps wie
   „Meintest du 'name'?" oder „Meintest du .upper?". Abgedeckt sind u. a. SyntaxError,

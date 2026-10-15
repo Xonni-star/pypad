@@ -220,11 +220,31 @@ def explain_error(text, code):
     typ = match.group(1).split(".")[-1]
     meldung = match.group(2).strip()
 
+    # Genaue Stelle aus dem Traceback lesen: Python zeigt die Quellzeile und darunter
+    # eine Marker-Zeile wie "    ~~~^~~" - daraus kommen Start, Ende und Zeigerposition.
     zeile_nr = None
-    for z in zeilen:
+    code_stelle = ""
+    span_start = None
+    span_ende = None
+    zeiger = None
+    for i, z in enumerate(zeilen):
         mm = re.search(r'File "[^"]*main\.py", line (\d+)', z)
-        if mm:
-            zeile_nr = int(mm.group(1))
+        if not mm:
+            continue
+        zeile_nr = int(mm.group(1))
+        quelle = zeilen[i + 1] if i + 1 < len(zeilen) else ""
+        marker = zeilen[i + 2] if i + 2 < len(zeilen) else ""
+        if quelle.startswith("    ") and not quelle.lstrip().startswith("File \""):
+            code_stelle = quelle[4:].rstrip()
+        if "^" in marker:
+            stellen = [j for j, ch in enumerate(marker) if ch in "~^"]
+            if stellen:
+                span_start = max(0, min(stellen) - 4)
+                span_ende = max(0, max(stellen) - 4) + 1
+                zeiger = max(0, marker.index("^") - 4)
+    if span_start is None and zeile_nr is not None:
+        span_start = 0
+        span_ende = 1
 
     erklaerung = ""
     tipps = []
@@ -389,6 +409,10 @@ def explain_error(text, code):
         "type": typ,
         "message": meldung,
         "line": zeile_nr,
+        "col": span_start if span_start is not None else 0,
+        "end": span_ende if span_ende is not None else 1,
+        "zeiger": zeiger if zeiger is not None else (span_start or 0),
+        "code": code_stelle,
         "erklaerung": erklaerung,
         "tipps": tipps,
     }
@@ -467,13 +491,15 @@ def lint_code(code):
             if name.startswith("_") or name in loads or node.lineno in schon_gemeldet:
                 continue
             schon_gemeldet.add(node.lineno)
-            hints.append({"line": node.lineno, "col": getattr(node, "col_offset", 0),
+            start = getattr(node, "col_offset", 0)
+            hints.append({"line": node.lineno, "col": start, "end": start + len(name),
                           "text": "'" + name + "' wird zugewiesen, aber nirgends benutzt"})
 
     # except ohne Typ
     for node in ast.walk(tree):
         if isinstance(node, ast.ExceptHandler) and node.type is None:
-            hints.append({"line": node.lineno, "col": 0,
+            start = getattr(node, "col_offset", 0)
+            hints.append({"line": node.lineno, "col": start, "end": start + len("except:"),
                           "text": "except: faengt ALLE Fehler - besser 'except Exception:'"})
 
     # Vergleich mit None
@@ -481,7 +507,8 @@ def lint_code(code):
         if isinstance(node, ast.Compare):
             for op, comp in zip(node.ops, node.comparators):
                 if isinstance(comp, ast.Constant) and comp.value is None and isinstance(op, (ast.Eq, ast.NotEq)):
-                    hints.append({"line": getattr(comp, "lineno", node.lineno), "col": 0,
+                    start = getattr(comp, "col_offset", 0)
+                    hints.append({"line": getattr(comp, "lineno", node.lineno), "col": start, "end": start + 4,
                                   "text": "Vergleich mit None: 'is None' / 'is not None' benutzen"})
 
     # Namen sammeln, die irgendwo im Code gesetzt werden (Store, Parameter, Import, def/class)
@@ -523,13 +550,13 @@ def lint_code(code):
             key = (node.lineno, name)
             if key not in gemeldet:
                 gemeldet.add(key)
-                hints.append({"line": node.lineno, "col": node.col_offset,
+                hints.append({"line": node.lineno, "col": node.col_offset, "end": node.col_offset + len(name),
                               "text": "'" + name + "' ist nirgends definiert (Tippfehler?)"})
         elif name in modul_stores and erste_stelle.get(name, 0) > node.lineno:
             key = (node.lineno, name)
             if key not in gemeldet:
                 gemeldet.add(key)
-                hints.append({"line": node.lineno, "col": node.col_offset,
+                hints.append({"line": node.lineno, "col": node.col_offset, "end": node.col_offset + len(name),
                               "text": "'" + name + "' wird benutzt, bevor es gesetzt wird"})
 
     # Funktionen, die nie einen Wert zurueckgeben - aber deren Ergebnis benutzt wird
