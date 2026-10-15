@@ -6,6 +6,8 @@ ausgeführt wird dein Code mit dem installierten Python.
 
 *A tiny offline Python editor for macOS: local browser UI on 127.0.0.1, code runs with your own Python.*
 
+![PyPad](docs/screenshot.png)
+
 ## Was drin ist
 
 - **Editor (Ace)** mit Python-Syntaxhervorhebung, Zeilennummern und **Autovervollständigung**
@@ -53,15 +55,19 @@ ausgeführt wird dein Code mit dem installierten Python.
 
 ## Voraussetzungen
 
-- macOS mit Python 3 (getestet mit 3.14) — Prüfen: `python3 --version`
+- Python 3 (getestet mit 3.14) — Prüfen: `python3 --version`
 - Sonst nichts: keine externen Bibliotheken, kein Build-Schritt, keine Installation
+- Läuft auf **macOS** (getestet), **Linux** (`./PyPad.sh`) und **Windows** (`PyPad.bat`)
 
 ## Start
 
 ```bash
 git clone https://github.com/Xonni-star/pypad.git
 cd pypad
-./PyPad.command          # oder: python3 pypad.py
+./PyPad.command          # macOS: Doppelklick im Finder
+./PyPad.sh               # Linux
+PyPad.bat                # Windows
+# oder einfach:  python3 pypad.py
 ```
 
 Der Browser öffnet sich automatisch auf `http://127.0.0.1:8765/`.
