@@ -44,6 +44,12 @@ main{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
 button.mini{padding:3px 8px;font-size:11px;border-radius:6px}
 .ace_marker-layer .pypad-warn{position:absolute;z-index:19;background:rgba(255,200,80,.13);border-left:3px solid rgba(255,200,80,.8)}
 #out a.jump{color:var(--acc);text-decoration:underline;cursor:pointer}
+#out .explain{display:block;margin:10px 0 4px;padding:10px 12px;border-left:3px solid #ffb454;
+  background:#1d2233;border-radius:6px;white-space:pre-wrap}
+#out .explain .eh{color:#ffb454;font-weight:700}
+#out .explain .em{color:#ff9e9e}
+#out .explain .el{color:var(--acc);font-weight:700}
+#out .explain .et{color:#e6ecff}
 pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;
   font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#0c1120}
 #out .err{color:var(--err)}
@@ -383,6 +389,24 @@ function lostConnection() {
   outEl.scrollTop = outEl.scrollHeight;
 }
 
+// Erklaerung zum Fehler: was passiert ist und was man dagegen tun kann
+function renderExplanation(ex) {
+  if (!ex || !ex.erklaerung) { return; }
+  var nl = String.fromCharCode(10);
+  var h = '<span class="explain">' + nl;
+  h += '<span class="eh">' + esc(ex.type) + (ex.line ? ' (Zeile ' + ex.line + ')' : '') + '</span>' + nl;
+  if (ex.message) { h += '<span class="em">' + esc(ex.message) + '</span>' + nl; }
+  h += nl + '<span class="et">' + esc(ex.erklaerung) + '</span>' + nl;
+  if (ex.tipps && ex.tipps.length) {
+    h += nl + '<span class="el">Was du machen kannst:</span>' + nl;
+    ex.tipps.forEach(function (t) {
+      h += '<span class="et">  \u2022 ' + esc(t) + '</span>' + nl;
+    });
+  }
+  h += '</span>' + nl;
+  outEl.insertAdjacentHTML('beforeend', h);
+}
+
 function clearErrorHighlight() {
   editor.session.setAnnotations(editor.session.getAnnotations().filter(function (a) { return a.type !== 'error'; }));
   if (errorMarker !== null) {
@@ -484,12 +508,11 @@ function finishRun(d) {
   clearInterval(pollTimer);
   pollTimer = null;
   var err = parseError(errBuffer);
-  var zusatz = '';
   if (err) {
     highlightError(err);
-    zusatz = '  \u00b7  Fehler in Zeile ' + err.line + ' (anklicken zum Springen)';
     appendChunk('err', '\n[PyPad] Fehler in Zeile ' + err.line + ': ' + err.message + '\n');
   }
+  renderExplanation(d.explanation);
   appendChunk('dim', '\n[fertig - Exit ' + d.returncode + ', ' + d.ms + ' ms]\n');
   outEl.scrollTop = outEl.scrollHeight;
   if (statusEl.classList.contains('clickable')) {

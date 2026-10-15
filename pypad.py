@@ -195,6 +195,205 @@ def complete_words(code, prefix):
     return words
 
 
+def _namen_im_code(code):
+    """Alle Bezeichner aus dem Code (fuer "Meintest du ...?")"""
+    return set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code or ""))
+
+
+def _vorschlag(name, kandidaten):
+    import difflib
+    treffer = difflib.get_close_matches(name, sorted(kandidaten), n=2, cutoff=0.75)
+    return treffer
+
+
+def explain_error(text, code):
+    """Aus dem Traceback eine verstaendliche Erklaerung plus konkrete Tipps bauen."""
+    if not text or not text.strip():
+        return None
+    zeilen = [z for z in text.strip().split("\n") if z.strip()]
+    if not zeilen:
+        return None
+    letzte = zeilen[-1].strip()
+    match = re.match(r"^([A-Za-z_][A-Za-z0-9_.]*)\s*:?\s*(.*)$", letzte)
+    if not match:
+        return None
+    typ = match.group(1).split(".")[-1]
+    meldung = match.group(2).strip()
+
+    zeile_nr = None
+    for z in zeilen:
+        mm = re.search(r'File "[^"]*main\.py", line (\d+)', z)
+        if mm:
+            zeile_nr = int(mm.group(1))
+
+    erklaerung = ""
+    tipps = []
+
+    if typ in ("SyntaxError", "IndentationError", "TabError"):
+        erklaerung = "Python konnte den Text nicht als Programm lesen - irgendwo stimmt die Schreibweise nicht."
+        if typ == "IndentationError" and "expected an indented block" in meldung:
+            erklaerung = "Nach dem Doppelpunkt fehlt der eingerueckte Block."
+            tipps.append("Direkt unter der Zeile mit ':' muss der Code eingerueckt stehen (4 Leerzeichen).")
+        elif typ == "IndentationError":
+            tipps.append("Diese Zeile ist anders eingerueckt als der Block darueber - pruefe die Leerzeichen.")
+        tipps += [
+            "Fehlt ein Doppelpunkt am Zeilenende? Beispiel: if x > 3:",
+            "Fehlt eine Klammer, ein Anfuehrungszeichen oder ein Komma?",
+            "Einrueckung: 4 Leerzeichen pro Ebene - Tabs und Leerzeichen nicht mischen.",
+            "Der Fehler steckt oft in der Zeile DARUEBER.",
+        ]
+
+    elif typ == "NameError":
+        m2 = re.search(r"name '([^']+)' is not defined", meldung)
+        name = m2.group(1) if m2 else None
+        erklaerung = "Python kennt diesen Namen nicht." if not name else "Python kennt den Namen '" + name + "' nicht."
+        if name:
+            kandidaten = _namen_im_code(code) | set(BUILTIN_NAMES)
+            nah = [k for k in _vorschlag(name, kandidaten) if k != name]
+            if nah:
+                tipps.append("Meintest du " + " oder ".join("'" + k + "'" for k in nah) + "? (Tippfehler?)")
+        tipps += [
+            "Gross- und Kleinschreibung zaehlt: name und Name sind verschieden.",
+            "Jeden Namen erst erzeugen, dann benutzen: name = \"Alex\"",
+            "Bei input() daran denken: die Antwort muss in eine Variable gespeichert werden.",
+        ]
+
+    elif typ == "TypeError":
+        m2 = re.search(r"unsupported operand type\(s\) for ([^:]+): '([^']+)' and '([^']+)'", meldung)
+        m3 = re.search(r"'([^']+)' object is not (callable|subscriptable|iterable)", meldung)
+        m4 = re.search(r"(?:can only concatenate|must be) (\w+)(?: \(not \"?(\w+)\"?\))?", meldung)
+        if m4:
+            erklaerung = "Du mischst Text und Zahl - das geht so nicht."
+            tipps += [
+                "Wandle um: str(zahl) fuer Text oder int(text) fuer eine Zahl.",
+                "Am einfachsten mit f-string: f\"Du bist {alter} Jahre alt\"",
+                "Pruefe mit print(type(x)), was wirklich in der Variablen steckt.",
+            ]
+        elif m2:
+            art, a, b = m2.group(1).strip(), m2.group(2), m2.group(3)
+            erklaerung = "Du mischst zwei verschiedene Datentypen (" + a + " und " + b + ") - das geht so nicht."
+            tipps += [
+                "Text und Zahl lassen sich nicht direkt verbinden. Wandle um: str(zahl) oder int(text).",
+                "Am einfachsten mit f-string: f\"Du bist {alter} Jahre alt\"",
+                "Pruefe mit print(type(x)), was wirklich in der Variablen steckt.",
+            ]
+        elif m3:
+            erklaerung = "Der Wert vom Typ '" + m3.group(1) + "' kann das nicht (" + m3.group(2) + ")."
+            tipps += [
+                "Vielleicht hast du eine eingebaute Funktion mit einer eigenen Variable ueberschrieben (z. B. len oder sum)?",
+                "Pruefe mit print(type(x)), welcher Typ wirklich drin steckt.",
+            ]
+        else:
+            erklaerung = "Es wurden Bausteine mit den falschen Typen kombiniert."
+            tipps.append("Pruefe die Typen mit print(type(x)).")
+
+    elif typ == "ValueError":
+        if "invalid literal for int()" in meldung:
+            erklaerung = "int() konnte den Text nicht in eine Zahl umwandeln."
+            tipps += [
+                "int(\"abc\") geht nicht - nur Ziffern wie int(\"7\").",
+                "Nach input() pruefe: hat der Benutzer wirklich eine Zahl getippt?",
+                "Probiere es im PyPad aus: print(int(\"12\"))",
+            ]
+        elif "too many values to unpack" in meldung or "not enough values" in meldung:
+            erklaerung = "Links und rechts vom = passen nicht zusammen."
+            tipps.append("Bei a, b = ... muessen rechts genau zwei Werte stehen.")
+        else:
+            erklaerung = "Ein Wert passte nicht (ValueError)."
+            tipps.append("Schau dir die markierte Zeile an: dort wird der Wert verarbeitet.")
+
+    elif typ == "ZeroDivisionError":
+        erklaerung = "Du teilst durch Null - das ist in Python verboten."
+        tipps += [
+            "Pruefe den Nenner, bevor du teilst: if nenner != 0:",
+            "Haeufige Ursache: die Variable ist noch 0 oder leer.",
+        ]
+
+    elif typ == "IndexError":
+        erklaerung = "Du greifst auf eine Stelle zu, die es in der Liste nicht gibt."
+        tipps += [
+            "Zaehlung beginnt bei 0: eine Liste mit 3 Elementen hat die Stellen 0, 1, 2.",
+            "Laenge pruefen: len(liste) - die letzte Stelle ist len(liste) - 1.",
+        ]
+
+    elif typ == "KeyError":
+        m2 = re.search(r"KeyError: (.+)", letzte)
+        erklaerung = "Diesen Schluessel gibt es im Dictionary nicht."
+        if m2:
+            tipps.append("Vorher pruefen: if schluessel in daten:")
+        tipps.append("Mit daten.get(\"schluessel\", \"Standard\") bekommst du keinen Fehler.")
+
+    elif typ == "AttributeError":
+        m2 = re.search(r"'([^']+)' object has no attribute '([^']+)'", meldung)
+        erklaerung = "Diese Funktion/Eigenschaft gibt es fuer diesen Typ nicht."
+        if m2:
+            art, attr = m2.group(1), m2.group(2)
+            basis = {"str": str, "int": int, "float": float, "list": list, "dict": dict, "set": set, "tuple": tuple}
+            if art in basis:
+                nah = [k for k in _vorschlag(attr, set(dir(basis[art]))) if k != attr]
+                if nah:
+                    tipps.append("Meintest du " + " oder ".join("." + k for k in nah) + "?")
+            tipps.append("Der Wert ist ein " + art + " - nicht jeder Befehl passt zu jedem Typ.")
+        tipps.append("Pruefe mit print(type(x)), was in der Variablen steckt.")
+
+    elif typ in ("ModuleNotFoundError", "ImportError"):
+        m2 = re.search(r"No module named '([^']+)'", meldung)
+        erklaerung = "Dieses Modul gibt es nicht oder es ist nicht installiert."
+        if m2:
+            nah = [k for k in _vorschlag(m2.group(1), set(STDLIB_NAMES) | _namen_im_code(code)) if k != m2.group(1)]
+            if nah:
+                tipps.append("Meintest du " + " oder ".join("'" + k + "'" for k in nah) + "?")
+        tipps += [
+            "Schreibweise pruefen: math, random, os, sys sind schon dabei.",
+            "Fuer Zusatz-Pakete im Terminal: pip3 install <name>",
+        ]
+
+    elif typ == "FileNotFoundError":
+        erklaerung = "Die Datei wurde nicht gefunden."
+        tipps += [
+            "Dein Programm laeuft im Ordner playground/ - dort sucht Python die Datei.",
+            "Dateinamen und Endung pruefen (z. B. notizen.txt).",
+            "Beim Schreiben erst mit \"w\" anlegen: open(\"datei.txt\", \"w\")",
+        ]
+
+    elif typ == "EOFError":
+        erklaerung = "Dein Programm wollte eine Eingabe (input()), es kam aber nichts an."
+        tipps += [
+            "Tippe die Antwort unten in die Zeile mit dem > und druecke Enter.",
+            "Oder fuelle vorher das Feld \"Eingaben fuer den naechsten Start\".",
+        ]
+
+    elif typ == "UnboundLocalError":
+        erklaerung = "In einer Funktion benutzt du einen Namen, bevor er dort gesetzt wurde."
+        tipps.append("Setze die Variable in der Funktion oder uebergib sie als Parameter.")
+
+    elif typ == "RecursionError":
+        erklaerung = "Eine Funktion ruft sich immer wieder selbst auf und kommt nie zum Ende."
+        tipps.append("Es fehlt eine Abbruch-Bedingung (if ...: return ...).")
+
+    elif typ == "KeyboardInterrupt":
+        erklaerung = "Das Programm wurde abgebrochen (Stopp oder Ctrl+C)."
+        tipps.append("Das ist kein Fehler im Code.")
+
+    else:
+        erklaerung = "Fehler vom Typ " + typ + "."
+        tipps += [
+            "Schau dir die markierte Zeile an - dort ist es passiert.",
+            "Bau kurz davor ein print(...) ein, um zu sehen, was in den Variablen steht.",
+        ]
+
+    if not tipps:
+        tipps.append("Schau dir die markierte Zeile an.")
+
+    return {
+        "type": typ,
+        "message": meldung,
+        "line": zeile_nr,
+        "erklaerung": erklaerung,
+        "tipps": tipps,
+    }
+
+
 def scope_nodes(scope):
     """Alle Knoten eines Scopes, aber nicht in tiefere Scopes (Funktionen/Klassen) hinein."""
     result = []
@@ -379,6 +578,8 @@ class Run:
         self.lock = threading.Lock()
         self.done = False
         self.returncode = None
+        self.code = code
+        self.explain = None
         self.started = time.time()
         self.killed_by_timeout = False
         self.tmp = tempfile.TemporaryDirectory(prefix="pypad-")
@@ -458,12 +659,22 @@ class Run:
         with self.lock:
             chunks = self.chunks[start:]
             total = len(self.chunks)
+        if self.done and self.explain is None:
+            try:
+                fehlertext = "".join(c["s"] for c in chunks if c["t"] == "err")
+                if not fehlertext:
+                    with self.lock:
+                        fehlertext = "".join(c["s"] for c in self.chunks if c["t"] == "err")
+                self.explain = explain_error(fehlertext, self.code) or {}
+            except Exception:
+                self.explain = {}
         return {
             "chunks": chunks,
             "next": total,
             "done": self.done,
             "returncode": self.returncode,
             "ms": int((time.time() - self.started) * 1000),
+            "explanation": self.explain if self.done else None,
         }
 
 

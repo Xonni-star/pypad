@@ -18,6 +18,11 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Fehler springen ins Auge:** läuft etwas schief, wird die betroffene Zeile im Editor **rot
   hervorgehoben** (blinkt kurz auf), im Rand erscheint ein Fehlersymbol mit der Meldung und der
   Cursor springt genau dorthin. In der Statuszeile steht „Fehler in Zeile N" — anklicken springt zurück.
+- **Fehler werden erklärt:** unter der Ausgabe steht ein Kasten mit **Klartext**: um welchen Fehler
+  es geht, **warum** er passiert ist und **was man dagegen tun kann** — plus Tipps wie
+  „Meintest du 'name'?" oder „Meintest du .upper?". Abgedeckt sind u. a. SyntaxError,
+  IndentationError, NameError, TypeError, ValueError, ZeroDivisionError, IndexError, KeyError,
+  AttributeError, ModuleNotFoundError, FileNotFoundError, EOFError, UnboundLocalError, RecursionError.
 - **Hinweise im Code:** typische Stolpersteine werden schon **vor** dem Lauf markiert —
   unbenutzter Import, Zuweisung ohne Verwendung, `except:` ohne Typ, Vergleich mit `== None`,
   Name **nirgends definiert** (Tippfehler), Nutzung **vor** der Zuweisung und
