@@ -1,5 +1,22 @@
 # Änderungen
 
+## 1.1.0 — 2026-10-16
+
+**Editor & Bedienung**
+- Datei-Browser: beliebigen Ordner öffnen, Text-Dateien auflisten, öffnen und direkt auf der Platte speichern
+- Tabs für mehrere offene Dateien, dazu eine Liste zuletzt geöffneter Dateien
+- Verschiebbare Fenstergrößen (Trenner ziehen), Code-Faltung, Zeile:Spalte-Anzeige, Ausgaben-Deckel bei sehr langen Läufen
+- Einstellungen (⚙): Lernen-Leiste, Hinweise, Variablen, Erklärung, Auto-Speichern und Zeilennummern ein-/ausblenden, Schriftgröße
+
+**Git**
+- Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+
+**Sprachen & Werkzeuge**
+- Syntax-Highlighting für JavaScript, HTML, CSS, JSON und Markdown (Ausführen bleibt Python)
+- Markdown-Vorschau und Gehe-zu-Definition (F3)
+- Schritt-für-Schritt-Debugger (🐞) mit Eingaben an input()
+- Quiz-Karten in allen acht Lektionen
+
 ## 1.0.0 — 2026-10-15
 
 Erste veröffentlichte Fassung.
