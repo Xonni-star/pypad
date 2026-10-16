@@ -56,6 +56,7 @@ ausgeführt wird dein Code mit dem installierten Python.
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+- **Code von GitHub laden:** im Git-Panel eine GitHub-Adresse eintippen (`https://github.com/user/repo` oder kurz `user/repo`) und **Laden** — das Repo wird in den Ordner geklont. Danach zeigen Status/Commit/Push/Pull auf das geladene Repo. Nur `github.com` wird angenommen, geklont wird flach (`--depth 1`).
 - **Mehrere Sprachen:** Syntax-Highlighting für JavaScript, HTML, CSS, JSON und Markdown (Ausführen bleibt Python)
 - **Markdown-Vorschau**, **Gehe-zu-Definition** (F3), **zuletzt geöffnete Dateien** und **frei verschiebbare Fenstergrößen** (Trenner ziehen)
 - **Server-Zugriff (SSH):** Dateien auf entfernten Rechnern über SSH auflisten, öffnen und speichern — Server einfach ins „Server"-Feld der Datei-Leiste eintippen
@@ -113,6 +114,7 @@ Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem
 - Code laeuft abgesichert: eigener System-User, kein Netzwerk, Speicher-/CPU-Limits
 - HTTPS mit echtem Zertifikat, Sitzungen (HttpOnly/Secure/SameSite), Login-Bremse
 - Dateizugriff nur im eigenen Workspace (Pfad-Traversal blockiert)
+- Gleiches Git-Panel wie offline: Repo von GitHub laden, danach Status/Diff/Commit/Push/Pull im geladenen Ordner
 
 ## App und Startskripte
 

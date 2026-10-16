@@ -46,6 +46,7 @@ main{flex:1;display:flex;flex-direction:row;min-height:0}
 #dateiListe{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #dateiListe li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dateiListe li:hover{background:#1b2338}
+#dateiListe li.ordner{color:#ffd479}
 .git-panel{border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .git-branch{padding:6px 10px;font:12px ui-monospace,Menlo,monospace;color:#ffd479;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .git-status{overflow:auto;max-height:180px;padding:4px 0}
@@ -216,6 +217,10 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
       <div class="git-commit">
         <input id="gitMessage" placeholder="Commit-Nachricht">
         <button id="btnGitCommit">Commit</button>
+      </div>
+      <div class="git-commit">
+        <input id="gitUrl" placeholder="GitHub: user/repo">
+        <button id="btnGitLaden" title="Repo von GitHub klonen">Laden</button>
       </div>
       <div class="git-actions">
         <button id="btnGitPush">Push</button>
@@ -1469,6 +1474,29 @@ function gitBefehl(was) {
   }).catch(function () { footHint.textContent = 'keine Verbindung'; });
 }
 
+function gitVonGithubLaden() {
+  var url = document.getElementById('gitUrl').value.trim();
+  var ziel = gitOrdner();
+  if (!url) { footHint.textContent = 'Bitte eine GitHub-Adresse eingeben, z.B. https://github.com/Xonni-star/pypad'; return; }
+  document.getElementById('gitBranch').textContent = 'lade ' + url + ' ...';
+  footHint.textContent = 'lade ' + url + ' ...';
+  fetch('/git-laden', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pfad: ziel, url: url }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.ok) {
+        document.getElementById('gitUrl').value = '';
+        document.getElementById('ordnerInput').value = d.ordner;
+        footHint.textContent = 'GitHub-Repo geladen: ' + d.name + ' (' + d.dateien + ' Dateien)';
+        ordnerLaden();
+      } else {
+        document.getElementById('gitBranch').textContent = 'Laden fehlgeschlagen';
+        footHint.textContent = String(d.error || 'Laden fehlgeschlagen').slice(0, 160);
+      }
+    })
+    .catch(function () { footHint.textContent = 'keine Verbindung zum PyPad-Server'; });
+}
+
 function ordnerLaden() {
   var name = verbindungAktuell();
   var eingabe = document.getElementById('ordnerInput');
@@ -1483,6 +1511,15 @@ function ordnerLaden() {
       if (!eingabe.value.trim() && d.pfad && !host) { eingabe.value = d.pfad; }
       var ul = document.getElementById('dateiListe');
       ul.innerHTML = '';
+      if (!name) {
+        (d.ordner || []).forEach(function (o) {
+          var oli = document.createElement('li');
+          oli.className = 'ordner';
+          oli.textContent = String.fromCharCode(128193) + ' ' + o;
+          oli.setAttribute('data-ordner', d.pfad + '/' + o);
+          ul.appendChild(oli);
+        });
+      }
       (d.dateien || []).forEach(function (name) {
         var li = document.createElement('li');
         li.textContent = name;
@@ -1923,6 +1960,7 @@ document.getElementById('btnOrdnerLaden').addEventListener('click', ordnerLaden)
 document.getElementById('ordnerInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { ordnerLaden(); } });
 document.getElementById('dateiListe').addEventListener('click', function (e) {
   var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-ordner')) { document.getElementById('ordnerInput').value = t.getAttribute('data-ordner'); ordnerLaden(); return; }
   if (t.getAttribute && t.getAttribute('data-pfad')) { ordnerDateiOeffnen(t.getAttribute('data-pfad'), t.getAttribute('data-host') || ''); }
 });
 document.getElementById('tabs').addEventListener('click', function (e) {
@@ -1935,6 +1973,8 @@ document.getElementById('btnVSave').addEventListener('click', verbindungSpeicher
 document.getElementById('btnVDelete').addEventListener('click', verbindungLoeschen);
 document.getElementById('btnGitRefresh').addEventListener('click', gitAktualisieren);
 document.getElementById('btnGitCommit').addEventListener('click', function () { gitBefehl('commit'); });
+document.getElementById('btnGitLaden').addEventListener('click', gitVonGithubLaden);
+document.getElementById('gitUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { gitVonGithubLaden(); } });
 document.getElementById('btnGitPush').addEventListener('click', function () { gitBefehl('push'); });
 document.getElementById('btnGitPull').addEventListener('click', function () { gitBefehl('pull'); });
 document.getElementById('zuletztListe').addEventListener('click', function (e) {

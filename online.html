@@ -36,6 +36,7 @@ main{flex:1;display:flex;min-height:0}
 #files{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #files li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #files li:hover{background:#1b2338}
+#files li.ordner{color:#ffd479}
 .git{border-top:1px solid var(--line);display:flex;flex-direction:column;max-height:45%;overflow:auto}
 .gitStatus{overflow:auto}
 .gitStatus .z{padding:3px 8px;font:11px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -109,6 +110,7 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
       <div class="git">
         <div class="head"><span>Git</span><span id="gitBranch" class="hint"></span><span class="spacer"></span><button id="btnGitLaden" class="mini">&#8635;</button></div>
         <div class="gitStatus" id="gitStatus"></div>
+        <div class="df"><input id="gitUrl" placeholder="GitHub: user/repo"><button id="btnGitLaden" class="mini" title="Repo von GitHub klonen">Laden</button></div>
         <div class="df"><input id="gitMsg" placeholder="Commit-Nachricht"><button id="btnGitCommit" class="mini">Commit</button></div>
         <div class="df"><button id="btnGitPush" class="mini">Push</button><button id="btnGitPull" class="mini">Pull</button></div>
       </div>
@@ -163,7 +165,6 @@ function zeigeApp(who) {
   elem('btnUsers').hidden = !who.admin;
   initEditor();
   ladeDateien('');
-  gitLaden();
 }
 
 function initEditor() {
@@ -227,18 +228,41 @@ async function boot() {
   zeigeApp(await r.json());
 }
 
+var aktuellerOrdner = '';
+
+function eintrag(ul, text, attrs, klasse) {
+  var li = document.createElement('li');
+  if (klasse) { li.className = klasse; }
+  li.textContent = text;
+  Object.keys(attrs).forEach(function(k){ li.setAttribute(k, attrs[k]); });
+  ul.appendChild(li);
+  return li;
+}
+
 async function ladeDateien(pfad) {
-  var d = await (await get('/api/files?pfad=' + encodeURIComponent(pfad || ''))).json();
+  pfad = pfad || '';
+  var d = await (await get('/api/files?pfad=' + encodeURIComponent(pfad))).json();
+  if (d.error) { appendChunk('err', d.error + nl()); return; }
+  aktuellerOrdner = pfad;
   var ul = elem('files');
   ul.innerHTML = '';
-  (d.dateien || []).forEach(function(n) {
-    var li = document.createElement('li');
-    li.textContent = n;
-    li.setAttribute('data-pfad', (pfad ? pfad + '/' : '') + n);
-    ul.appendChild(li);
+  if (pfad) {
+    var teile = pfad.split('/');
+    teile.pop();
+    eintrag(ul, String.fromCharCode(11014) + ' ' + (pfad.indexOf('/') >= 0 ? '..' : 'Workspace'), { 'data-hoch': teile.join('/') });
+  }
+  (d.ordner || []).forEach(function(n) {
+    eintrag(ul, String.fromCharCode(128193) + ' ' + n, { 'data-pfad': (pfad ? pfad + '/' : '') + n, 'data-ordner': '1' });
   });
+  (d.dateien || []).forEach(function(n) {
+    eintrag(ul, n, { 'data-pfad': (pfad ? pfad + '/' : '') + n });
+  });
+  if (!(d.ordner || []).length && !(d.dateien || []).length) {
+    eintrag(ul, '(keine Text-Dateien hier)', {}, 'hint');
+  }
   var i = await (await get('/api/info')).json();
-  elem('ws').textContent = i.workspace;
+  elem('ws').textContent = i.workspace + (pfad ? ' / ' + pfad : '');
+  gitLaden();
 }
 
 function pufferSichern() { if (aktuellerPfad !== null) { puffer[aktuellerPfad] = editor.getValue(); } }
@@ -298,8 +322,7 @@ async function speichern() {
   puffer[aktuellerPfad] = editor.getValue();
   elem('fname').textContent = d.gespeichert ? ('gespeichert: ' + aktuellerPfad) : ('Fehler: ' + (d.error || '?'));
   tabAnzeigen();
-  ladeDateien('');
-  gitLaden();
+  ladeDateien(aktuellerOrdner);
 }
 
 function appendChunk(kind, text) {
@@ -453,9 +476,9 @@ function debugBefehl(was) { if (debugId) { post('/api/debug/befehl', { id: debug
 
 async function gitLaden() {
   try {
-    var d = await (await get('/api/git')).json();
-    if (d.branch && d.branch.error) { elem('gitBranch').textContent = 'kein Repo'; elem('gitStatus').innerHTML = ''; return; }
-    elem('gitBranch').textContent = (d.branch && d.branch.ausgabe || '').trim();
+    var d = await (await get('/api/git?pfad=' + encodeURIComponent(aktuellerOrdner))).json();
+    if (d.branch && (d.branch.error || d.branch.rc)) { elem('gitBranch').textContent = 'kein Git-Repo' + (aktuellerOrdner ? ' in ' + aktuellerOrdner : ''); elem('gitStatus').innerHTML = ''; return; }
+    elem('gitBranch').textContent = (d.branch && d.branch.ausgabe || '').trim() + (aktuellerOrdner ? '  [' + aktuellerOrdner + ']' : '');
     var el = elem('gitStatus');
     el.innerHTML = '';
     var zeilen = ((d.status && d.status.ausgabe) || '').split(String.fromCharCode(10)).filter(Boolean);
@@ -475,14 +498,28 @@ async function gitLaden() {
   } catch (e) { }
 }
 
+async function gitVonGithubLaden() {
+  var url = elem('gitUrl').value.trim();
+  if (!url) { appendChunk('err', 'Bitte eine GitHub-Adresse eingeben, z.B. https://github.com/Xonni-star/pypad' + nl()); return; }
+  appendChunk('sys', 'lade ' + url + ' ...' + nl());
+  var d = await (await post('/api/git-laden', { url: url })).json();
+  if (d.ok) {
+    appendChunk('sys', 'GitHub-Repo geladen: ' + d.name + ' (' + d.dateien + ' Dateien)' + nl());
+    elem('gitUrl').value = '';
+    ladeDateien(d.name);
+  } else {
+    appendChunk('err', 'Laden fehlgeschlagen: ' + (d.error || '?') + nl());
+  }
+}
+
 async function gitDiff(datei) {
-  var d = await (await get('/api/git-diff?datei=' + encodeURIComponent(datei))).json();
+  var d = await (await get('/api/git-diff?datei=' + encodeURIComponent(datei) + '&pfad=' + encodeURIComponent(aktuellerOrdner))).json();
   var h = '<span class="explain"><span class="eh">Diff: ' + esc(datei) + '</span>' + nl() + esc(d.diff || '') + nl() + '</span>' + nl();
   elem('out').insertAdjacentHTML('beforeend', h);
 }
 
 async function gitBefehl(was) {
-  var d = await (await post('/api/git-' + was, { message: elem('gitMsg').value })).json();
+  var d = await (await post('/api/git-' + was, { message: elem('gitMsg').value, pfad: aktuellerOrdner })).json();
   var txt = ((d.ausgabe || '') + (d.fehler || '') + (d.error || '')).trim();
   elem('status').textContent = was + ': ' + (txt.slice(0, 60) || 'ok');
   elem('gitMsg').value = '';
@@ -522,6 +559,8 @@ elem('btnGitLaden').addEventListener('click', gitLaden);
 elem('btnGitCommit').addEventListener('click', function(){ gitBefehl('commit'); });
 elem('btnGitPush').addEventListener('click', function(){ gitBefehl('push'); });
 elem('btnGitPull').addEventListener('click', function(){ gitBefehl('pull'); });
+elem('btnGitLaden').addEventListener('click', gitVonGithubLaden);
+elem('gitUrl').addEventListener('keydown', function(e){ if (e.key === 'Enter') { gitVonGithubLaden(); } });
 elem('gitStatus').addEventListener('click', function(e){
   if (e.target.getAttribute && e.target.getAttribute('data-diff')) { gitDiff(e.target.getAttribute('data-diff')); }
 });
@@ -536,7 +575,14 @@ elem('btnTheme').addEventListener('click', function(){
 elem('btnFS').addEventListener('click', function(){ schrift = Math.min(22, schrift + 1); localStorage.setItem('pypad_schrift', String(schrift)); ladeSchrift(); });
 elem('btnFK').addEventListener('click', function(){ schrift = Math.max(10, schrift - 1); localStorage.setItem('pypad_schrift', String(schrift)); ladeSchrift(); });
 elem('uSave').addEventListener('click', nutzerSpeichern);
-elem('files').addEventListener('click', function(e){ if (e.target.getAttribute && e.target.getAttribute('data-pfad')) { oeffnen(e.target.getAttribute('data-pfad')); } });
+elem('files').addEventListener('click', function(e){
+  if (!e.target.getAttribute) { return; }
+  if (e.target.getAttribute('data-hoch') !== null) { ladeDateien(e.target.getAttribute('data-hoch') || ''); return; }
+  var p = e.target.getAttribute('data-pfad');
+  if (!p) { return; }
+  if (e.target.getAttribute('data-ordner')) { ladeDateien(p); return; }
+  oeffnen(p);
+});
 elem('tabs').addEventListener('click', function(e){
   var t = e.target;
   if (t.getAttribute && t.getAttribute('data-zu')) { tabZu(t.getAttribute('data-zu')); return; }

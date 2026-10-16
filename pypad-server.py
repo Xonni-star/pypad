@@ -362,7 +362,11 @@ class Handler(BaseHTTPRequestHandler):
             if pypad is None:
                 self._json({"error": "Git nicht verfuegbar"}, 500)
                 return
-            ws = str(workspace(user))
+            ziel = safe_path(user, (parse_qs(url.query).get("pfad") or [""])[0])
+            if ziel is None:
+                self._json({"error": "Pfad nicht erlaubt"}, 400)
+                return
+            ws = str(ziel)
             self._json({"pfad": ws,
                         "branch": pypad.git_ausfuehren(ws, "rev-parse", "--abbrev-ref", "HEAD"),
                         "status": pypad.git_ausfuehren(ws, "status", "--short"),
@@ -372,8 +376,13 @@ class Handler(BaseHTTPRequestHandler):
             if pypad is None:
                 self._json({"error": "Git nicht verfuegbar"}, 500)
                 return
-            datei = (parse_qs(url.query).get("datei") or [""])[0]
-            ws = str(workspace(user))
+            q = parse_qs(url.query)
+            datei = (q.get("datei") or [""])[0]
+            ziel = safe_path(user, (q.get("pfad") or [""])[0])
+            if ziel is None:
+                self._json({"error": "Pfad nicht erlaubt"}, 400)
+                return
+            ws = str(ziel)
             a = pypad.git_ausfuehren(ws, "diff", "--", datei)
             b = pypad.git_ausfuehren(ws, "diff", "--cached", "--", datei)
             diff = (a.get("ausgabe", "") + b.get("ausgabe", "")).strip()
@@ -391,7 +400,8 @@ class Handler(BaseHTTPRequestHandler):
             endungen = {".py", ".js", ".mjs", ".html", ".htm", ".css", ".json", ".md", ".markdown",
                         ".txt", ".sh", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf"}
             dateien = sorted(p.name for p in ziel.iterdir() if p.is_file() and p.suffix.lower() in endungen)
-            self._json({"pfad": str(ziel), "dateien": dateien})
+            ordner = sorted(p.name for p in ziel.iterdir() if p.is_dir() and not p.name.startswith("."))
+            self._json({"pfad": str(ziel), "dateien": dateien, "ordner": ordner})
             return
         if pfad == "/api/datei":
             q = parse_qs(url.query)
@@ -547,11 +557,23 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"gestoppt": True})
             return
 
-        if pfad in ("/api/git-commit", "/api/git-push", "/api/git-pull"):
+        if pfad == "/api/git-laden":
             if pypad is None:
                 self._json({"error": "Git nicht verfuegbar"}, 500)
                 return
             ws = str(workspace(user))
+            self._json(pypad.github_laden(ws, daten.get("url"), daten.get("branch"), daten.get("token")))
+            return
+
+        if pfad in ("/api/git-commit", "/api/git-push", "/api/git-pull"):
+            if pypad is None:
+                self._json({"error": "Git nicht verfuegbar"}, 500)
+                return
+            ziel = safe_path(user, daten.get("pfad"))
+            if ziel is None:
+                self._json({"error": "Pfad nicht erlaubt"}, 400)
+                return
+            ws = str(ziel)
             if pfad == "/api/git-commit":
                 meldung = (daten.get("message") or "").strip() or "Update"
                 pypad.git_ausfuehren(ws, "add", "-A")

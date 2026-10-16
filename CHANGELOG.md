@@ -1,5 +1,14 @@
 # Änderungen
 
+## 1.6.0 - 2026-10-16
+
+**Code von GitHub laden (offline und online)**
+- Git-Panel hat jetzt eine Lade-Zeile: GitHub-Adresse eintippen (https://github.com/user/repo oder kurz user/repo), "Laden" klont das Repo in den Ordner
+- Es wird nur github.com angenommen, geklont wird flach (--depth 1); Fehler kommen in Klartext (Tippfehler, privat/nicht gefunden, kein Internet)
+- Dateileiste zeigt jetzt auch Unterordner: Ordner anklicken = hineingehen, ".." = eine Ebene zurueck
+- Git-Befehle (Status/Diff/Commit/Push/Pull) gelten fuer den gerade geoeffneten Ordner - nach dem Laden also fuer das Repo
+- Doppeltes Laden in denselben Ordner wird abgefangen ("liegt hier schon")
+
 ## 1.5.0 - 2026-10-16
 
 **Online-Variante: Debugger, Git und Live-Eingabe - plus Layout-Fix**

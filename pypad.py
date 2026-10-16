@@ -244,6 +244,73 @@ def git_ausfuehren(pfad, *args):
         return {"error": str(exc)}
 
 
+def github_pruefen(text):
+    """Eingabe (GitHub-Adresse oder "user/repo") -> (owner, repo) oder None."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    text = re.sub(r"^https?://(?:www\.)?github\.com/", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^git@github\.com:", "", text, flags=re.IGNORECASE)
+    text = text.strip().strip("/")
+    if text.lower().endswith(".git"):
+        text = text[:-4]
+    if text.count("/") != 1:
+        return None
+    owner, repo = text.split("/")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", owner) or not re.fullmatch(r"[A-Za-z0-9._-]+", repo):
+        return None
+    if repo in (".", "..") or owner in (".", ".."):
+        return None
+    return owner, repo
+
+
+def github_laden(ziel_ordner, url, branch=None, token=None):
+    """Ein GitHub-Repo nach <ziel_ordner>/<repo> klonen (nur github.com, oeffentlich oder per Token)."""
+    geprueft = github_pruefen(url)
+    if not geprueft:
+        return {"error": "Bitte eine Adresse wie https://github.com/Xonni-star/pypad angeben."}
+    owner, repo = geprueft
+    basis = Path(str(ziel_ordner))
+    if not basis.is_dir():
+        return {"error": "Zielordner fehlt: " + str(basis)}
+    ziel = basis / repo
+    if ziel.exists() and any(ziel.iterdir()):
+        return {"error": "Der Ordner \"" + repo + "\" liegt hier schon - erst loeschen oder anderen Ordner waehlen."}
+    befehl = ["git", "clone", "--depth", "1"]
+    if (branch or "").strip():
+        befehl += ["--branch", branch.strip()]
+    if (token or "").strip():
+        befehl += ["-c", "credential.helper=!f() { echo username=x-access-token; echo password=$PYPAD_GH_TOKEN; }; f"]
+    befehl += ["https://github.com/" + owner + "/" + repo + ".git", str(ziel)]
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = "echo"
+    if (token or "").strip():
+        env["PYPAD_GH_TOKEN"] = token.strip()
+    try:
+        fertig = subprocess.run(befehl, capture_output=True, text=True, timeout=120, env=env)
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(ziel, ignore_errors=True)
+        return {"error": "Das Laden hat zu lange gedauert (Zeitlimit 2 Minuten)."}
+    except FileNotFoundError:
+        return {"error": "git ist nicht installiert"}
+    except Exception as exc:
+        return {"error": str(exc)}
+    if fertig.returncode != 0:
+        fehler = ((fertig.stderr or "") + (fertig.stdout or "")).strip()
+        shutil.rmtree(ziel, ignore_errors=True)
+        klein = fehler.lower()
+        if "could not resolve host" in klein or "network is unreachable" in klein:
+            return {"error": "Keine Verbindung zu github.com - ist Internet da?"}
+        if "authentication failed" in klein or "invalid username or password" in klein:
+            return {"error": "Anmeldung fehlgeschlagen - fuer private Repos braucht es ein Token."}
+        if "could not read from remote repository" in klein or "repository not found" in klein:
+            return {"error": "Repo nicht gefunden (oder privat - dann Token noetig)."}
+        return {"error": fehler[-400:] or "git clone ist fehlgeschlagen."}
+    dateien = [p for p in ziel.rglob("*") if p.is_file()]
+    return {"ok": True, "ordner": str(ziel), "name": repo, "dateien": len(dateien)}
+
+
 def resolve_dir(rel):
     """Erlaubte Ordner: 'snippets' oder 'lektionen/<lektion>' - sonst None."""
     rel = (rel or "snippets").strip().strip("/")
@@ -1311,7 +1378,8 @@ class Handler(BaseHTTPRequestHandler):
             spezial = {"README", "LICENSE", "Makefile", "Dockerfile", ".gitignore", ".gitattributes"}
             dateien = sorted(p.name for p in pfad.iterdir()
                              if p.is_file() and (p.suffix.lower() in endungen or p.name in spezial))
-            self._json({"pfad": str(pfad), "dateien": dateien})
+            ordner = sorted(p.name for p in pfad.iterdir() if p.is_dir() and not p.name.startswith("."))
+            self._json({"pfad": str(pfad), "dateien": dateien, "ordner": ordner})
             return
         if url.path == "/datei":
             query = parse_qs(url.query)
@@ -1439,6 +1507,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": (r.get("fehler") or r.get("error") or "Schreiben fehlgeschlagen")})
                 return
             self._json({"gespeichert": pfad})
+            return
+
+        if url.path == "/git-laden":
+            ziel = abs_pfad(data.get("pfad"))
+            if not ziel.is_dir():
+                self._json({"error": "kein Ordner: " + str(ziel)}, 400)
+                return
+            self._json(github_laden(ziel, data.get("url"), data.get("branch"), data.get("token")))
             return
 
         if url.path == "/git-commit":
