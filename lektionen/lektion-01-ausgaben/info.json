@@ -31,5 +31,27 @@
         "min_zeilen": 5
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Was gibt print(\"-\" * 3) aus?",
+      "antworten": [
+        "---",
+        "-3",
+        "einen Fehler"
+      ],
+      "richtig": 0,
+      "erklaerung": "Ein Text mal eine Zahl wiederholt den Text: \"-\" * 3 ergibt \"---\"."
+    },
+    {
+      "frage": "Wie setzt du den Wert einer Variablen in einen Text ein?",
+      "antworten": [
+        "f\"Hallo {name}\"",
+        "print(name) + text",
+        "\"Hallo\" + name + \"!\""
+      ],
+      "richtig": 0,
+      "erklaerung": "Ein f-string (kleines f vor dem Anführungszeichen) setzt Werte direkt in den Text ein."
+    }
+  ]
 }

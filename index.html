@@ -48,6 +48,8 @@ button.mini{padding:3px 8px;font-size:11px;border-radius:6px}
 .ace_marker-layer .pypad-warn-range{position:absolute;z-index:20;background:rgba(255,200,80,.32);
   border-bottom:2px solid #ffc850;border-radius:3px}
 #out .explain .ec{color:#ffd9b8;font-weight:700}
+#out a.quizantwort,#out a.quiz{color:#8ecbff;text-decoration:none;cursor:pointer}
+#out a.quizantwort:hover,#out a.quiz:hover{text-decoration:underline}
 #out .vars{display:block;margin:8px 0 4px;padding:8px 12px;border-left:3px solid #6ea8fe;background:#182034;border-radius:6px;white-space:pre-wrap}
 #out .vars .vh{color:#9dc1ff;font-weight:700}
 #out .vars .vt{color:#d7e5ff}
@@ -108,6 +110,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <select id="stufe"><option value="uebung">Übung</option><option value="uebung-plus">Übung +</option><option value="uebung-profi">Übung ++</option></select>
   <button id="btnUebung">Laden</button>
   <button id="btnTipp">Tipp</button>
+  <button id="btnQuiz">Quiz</button>
   <button id="btnPruefen">✓ Prüfen</button>
   <button id="btnLoesung">Lösung</button>
   <button id="btnErledigt">✓ erledigt</button>
@@ -592,6 +595,62 @@ function zeigeTipp() {
       outEl.insertAdjacentHTML('beforeend', '<span class="explain"><span class="el">Tipp ' + Math.min(i + 1, tipps.length) + ' von ' + tipps.length + '</span>' + nl + '<span class="et">' + esc(tipp) + '</span>' + nl + '</span>' + nl);
       outEl.scrollTop = outEl.scrollHeight;
     }).catch(function () { });
+}
+
+var quizFragen = [];
+var quizIndex = 0;
+var quizPunkte = 0;
+var quizKarte = null;
+var quizBeantwortet = false;
+
+function quizStarten() {
+  var dir = lessonsEl.value;
+  if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
+  fetch('/lektion-info?dir=' + encodeURIComponent('lektionen/' + dir))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      quizFragen = (d && d.quiz) || [];
+      if (!quizFragen.length) { footHint.textContent = 'Fuer diese Lektion gibt es noch kein Quiz'; return; }
+      quizIndex = 0;
+      quizPunkte = 0;
+      quizZeigen();
+    }).catch(function () { footHint.textContent = 'keine Verbindung'; });
+}
+
+function quizZeigen() {
+  var nl = String.fromCharCode(10);
+  var f = quizFragen[quizIndex];
+  var h = '<span class="explain" id="quizKarte"><span class="el">Quiz ' + (quizIndex + 1) + ' von ' + quizFragen.length +
+    (quizPunkte ? '   (richtig: ' + quizPunkte + ')' : '') + '</span>' + nl;
+  h += '<span class="et">' + esc(f.frage) + '</span>' + nl;
+  (f.antworten || []).forEach(function (a, i) {
+    h += '<span class="et">   <a class="quizantwort" data-i="' + i + '">' + (i + 1) + ') ' + esc(a) + '</a></span>' + nl;
+  });
+  h += '</span>' + nl;
+  var alte = document.getElementById('quizKarte');
+  if (alte) { alte.remove(); }
+  outEl.insertAdjacentHTML('beforeend', h);
+  quizKarte = document.getElementById('quizKarte');
+  quizBeantwortet = false;
+  outEl.scrollTop = outEl.scrollHeight;
+}
+
+function quizAntwort(index) {
+  if (!quizKarte || quizBeantwortet) { return; }
+  var f = quizFragen[quizIndex];
+  var richtig = (index === f.richtig);
+  if (richtig) { quizPunkte += 1; }
+  var nl = String.fromCharCode(10);
+  var h = '<span class="et">   ' + (richtig ? '\u2705 Richtig!' : '\u274c Nicht ganz - richtig waere: ' + esc(f.antworten[f.richtig])) + '</span>' + nl;
+  if (f.erklaerung) { h += '<span class="dim">   ' + esc(f.erklaerung) + '</span>' + nl; }
+  if (quizIndex + 1 < quizFragen.length) {
+    h += '<span class="et">   <a class="quiz weiter" data-weiter="1">naechste Frage</a></span>' + nl;
+  } else {
+    h += '<span class="el">   Fertig! ' + quizPunkte + ' von ' + quizFragen.length + ' richtig.</span>' + nl;
+  }
+  quizKarte.insertAdjacentHTML('beforeend', h);
+  quizBeantwortet = true;
+  outEl.scrollTop = outEl.scrollHeight;
 }
 
 function pruefen() {
@@ -1101,6 +1160,7 @@ document.getElementById('btnTheme').addEventListener('click', function () {
 });
 document.getElementById('btnVerlauf').addEventListener('click', verlaufZeigen);
 document.getElementById('btnTipp').addEventListener('click', zeigeTipp);
+document.getElementById('btnQuiz').addEventListener('click', quizStarten);
 document.getElementById('btnPruefen').addEventListener('click', pruefen);
 btnErledigt.addEventListener('click', function () {
   var dir = lessonsEl.value;
@@ -1110,6 +1170,17 @@ btnErledigt.addEventListener('click', function () {
 });
 outEl.addEventListener('click', function (e) {
   var t = e.target;
+  if (t && t.classList && t.classList.contains('quizantwort')) {
+    e.preventDefault();
+    quizAntwort(parseInt(t.getAttribute('data-i'), 10));
+    return;
+  }
+  if (t && t.classList && t.classList.contains('quiz') && t.getAttribute('data-weiter')) {
+    e.preventDefault();
+    quizIndex += 1;
+    quizZeigen();
+    return;
+  }
   if (t && t.classList && t.classList.contains('verlaufZeile')) {
     e.preventDefault();
     var eintrag = verlaufListe[parseInt(t.getAttribute('data-i'), 10)];

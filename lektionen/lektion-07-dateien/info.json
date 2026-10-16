@@ -31,5 +31,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Womit öffnest du eine Datei so, dass sie automatisch geschlossen wird?",
+      "antworten": [
+        "with open(\"datei.txt\") as f:",
+        "open(\"datei.txt\")",
+        "datei(\"datei.txt\")"
+      ],
+      "richtig": 0,
+      "erklaerung": "with ... as schließt die Datei automatisch am Blockende."
+    },
+    {
+      "frage": "Welcher Modus hängt an eine bestehende Datei an?",
+      "antworten": [
+        "\"a\"",
+        "\"w\"",
+        "\"r\""
+      ],
+      "richtig": 0,
+      "erklaerung": "\"a\" = append (anhängen), \"w\" = neu schreiben (überschreibt!), \"r\" = lesen."
+    }
+  ]
 }

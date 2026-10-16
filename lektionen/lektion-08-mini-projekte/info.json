@@ -34,5 +34,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Eine Einkaufsliste soll erst bei leerer Eingabe enden. Was passt?",
+      "antworten": [
+        "while True: ... if eingabe == \"\": break",
+        "for i in range(10):",
+        "gar keine Schleife"
+      ],
+      "richtig": 0,
+      "erklaerung": "while True läuft, bis break kommt - hier bei leerer Eingabe."
+    },
+    {
+      "frage": "Was brauchst du für einen Durchschnitt?",
+      "antworten": [
+        "Summe geteilt durch Anzahl",
+        "Summe plus Anzahl",
+        "nur die Summe"
+      ],
+      "richtig": 0,
+      "erklaerung": "sum(werte) / len(werte)"
+    }
+  ]
 }

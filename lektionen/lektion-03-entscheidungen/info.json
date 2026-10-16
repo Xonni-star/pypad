@@ -67,5 +67,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Was gehört ans Ende einer if-Zeile?",
+      "antworten": [
+        "ein Doppelpunkt :",
+        "ein Semikolon ;",
+        "nichts"
+      ],
+      "richtig": 0,
+      "erklaerung": "if alter < 12: - der Doppelpunkt kündigt den Block an."
+    },
+    {
+      "frage": "if a > 1 / elif a > 2 / else - welcher Teil läuft bei a = 3?",
+      "antworten": [
+        "der erste (a > 1)",
+        "der zweite (a > 2)",
+        "beide"
+      ],
+      "richtig": 0,
+      "erklaerung": "Python prüft von oben nach unten und nimmt die ERSTE passende Bedingung."
+    }
+  ]
 }

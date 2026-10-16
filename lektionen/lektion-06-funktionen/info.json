@@ -32,5 +32,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Was gibt eine Funktion ohne return zurück?",
+      "antworten": [
+        "None",
+        "0",
+        "einen Fehler"
+      ],
+      "richtig": 0,
+      "erklaerung": "Ohne return ist das Ergebnis None."
+    },
+    {
+      "frage": "Wofür steht def?",
+      "antworten": [
+        "Definition einer Funktion",
+        "Dateneingabe",
+        "Dekoration"
+      ],
+      "richtig": 0,
+      "erklaerung": "def name(parameter): legt eine Funktion an."
+    }
+  ]
 }

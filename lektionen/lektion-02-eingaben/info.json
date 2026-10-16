@@ -36,5 +36,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Was liefert input() immer zurück?",
+      "antworten": [
+        "Text (str)",
+        "eine Zahl",
+        "je nach Eingabe alles"
+      ],
+      "richtig": 0,
+      "erklaerung": "input() gibt IMMER Text zurück - zum Rechnen mit int() oder float() umwandeln."
+    },
+    {
+      "frage": "Wie machst du aus \"7\" die Zahl 7?",
+      "antworten": [
+        "int(\"7\")",
+        "str(\"7\")",
+        "zahl(\"7\")"
+      ],
+      "richtig": 0,
+      "erklaerung": "int() wandelt Text in eine ganze Zahl um, float() in eine Kommazahl."
+    }
+  ]
 }

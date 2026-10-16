@@ -55,5 +55,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Wie oft läuft for i in range(3)?",
+      "antworten": [
+        "3 mal",
+        "4 mal",
+        "2 mal"
+      ],
+      "richtig": 0,
+      "erklaerung": "range(3) zählt 0, 1, 2 - also drei Durchläufe."
+    },
+    {
+      "frage": "Was ist bei einer while-Schleife besonders wichtig?",
+      "antworten": [
+        "Die Bedingung muss sich in der Schleife ändern",
+        "Es braucht immer ein range()",
+        "Nichts Besonderes"
+      ],
+      "richtig": 0,
+      "erklaerung": "Sonst läuft sie endlos - im Zweifel hilft der Stopp-Knopf."
+    }
+  ]
 }

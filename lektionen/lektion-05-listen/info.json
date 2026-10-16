@@ -41,5 +41,27 @@
         ]
       }
     ]
-  }
+  },
+  "quiz": [
+    {
+      "frage": "Wie bekommst du das erste Element einer Liste?",
+      "antworten": [
+        "liste[0]",
+        "liste[1]",
+        "liste.first"
+      ],
+      "richtig": 0,
+      "erklaerung": "Die Zählung beginnt bei 0."
+    },
+    {
+      "frage": "Womit hängst du etwas an eine Liste an?",
+      "antworten": [
+        "liste.append(x)",
+        "liste.add(x)",
+        "liste.push(x)"
+      ],
+      "richtig": 0,
+      "erklaerung": "append() hängt hinten an."
+    }
+  ]
 }
