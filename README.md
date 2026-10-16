@@ -50,6 +50,8 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Vorlagen** in der Autovervollständigung (`for`, `def`, `try`, `with` … als Gerüst)
 - **Auto-Speichern** von Übungen und Snippets, **Cmd+S** speichert sofort
 - **Darstellung umschaltbar**: hell/dunkel und Schriftgröße (wird gemerkt)
+- **Einstellungen** (⚙): Lernen-Leiste, Hinweise, Variablen-Anzeige, Fehler-Erklärung,
+  Auto-Speichern und Zeilennummern ein-/ausblenden; Schriftgröße per Regler
 - **Snippets** speichern / laden / löschen
 - **Lernbereich:** Lektionen mit *Beispiel / Übung / Lösung*; Wechseln verliert keine Eingaben,
   Übungen werden automatisch gesichert
