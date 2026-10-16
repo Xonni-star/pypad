@@ -28,9 +28,16 @@ button:disabled{opacity:.45;cursor:default}
 button.run{background:var(--acc);color:#06210f;font-weight:700;border-color:var(--acc)}
 button.run:hover:not(:disabled){filter:brightness(1.08)}
 button.stop{background:#3a2230;border-color:#5b2f3f;color:#ffc9d6}
-main{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
-main.mit-dateien{grid-template-columns:200px 1fr 1fr}
-.datei-leiste{display:flex;flex-direction:column;min-height:0;min-width:0;background:#0e1524;border-right:1px solid var(--line);overflow:hidden}
+main{flex:1;display:flex;flex-direction:row;min-height:0}
+.editor-pane{flex:1 1 55%;min-width:120px}
+.out-pane{flex:1 1 45%;min-width:120px}
+.teiler{flex:0 0 6px;background:#252d42;cursor:col-resize;z-index:5}
+.teiler:hover,.teiler.zug{background:var(--acc)}
+@media (max-width:900px){main{flex-direction:column}.teiler{flex:0 0 6px;cursor:row-resize}.editor-pane,.out-pane{flex:1 1 50%}}
+.datei-leiste{display:flex;flex-direction:column;min-height:0;min-width:120px;flex:0 0 200px;background:#0e1524;border-right:1px solid var(--line);overflow:hidden}
+#zuletztListe{list-style:none;margin:0;padding:4px 0;border-bottom:1px solid var(--line)}
+#zuletztListe li{padding:4px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--dim);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#zuletztListe li:hover{background:#1b2338;color:var(--fg)}
 .df-input{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
 .df-input input{flex:1;min-width:0;background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;outline:none}
 #dateiListe{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
@@ -64,6 +71,19 @@ main.mit-dateien{grid-template-columns:200px 1fr 1fr}
   border-left:3px solid #ff6b6b;animation:pypadBlink 1.1s ease-in-out 3}
 @keyframes pypadBlink{0%,100%{background:rgba(255,90,90,.22)}50%{background:rgba(255,90,90,.6)}}
 .hint.clickable{cursor:pointer;color:var(--err);text-decoration:underline}
+.md-vorschau{flex:1;overflow:auto;padding:14px 22px;background:#0c1120;color:var(--fg);font:14px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.md-vorschau h1,.md-vorschau h2,.md-vorschau h3{margin:12px 0 6px;line-height:1.3}
+.md-vorschau h1{font-size:22px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.md-vorschau h2{font-size:18px}
+.md-vorschau h3{font-size:15px}
+.md-vorschau p{margin:8px 0}
+.md-vorschau code{background:#1b2338;padding:1px 5px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.md-vorschau pre{background:#0a0f1c;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto}
+.md-vorschau pre code{background:transparent;padding:0}
+.md-vorschau ul{margin:8px 0;padding-left:22px}
+.md-vorschau blockquote{border-left:3px solid var(--acc);margin:8px 0;padding:2px 12px;color:var(--dim)}
+.md-vorschau a{color:var(--acc)}
+.md-vorschau hr{border:none;border-top:1px solid var(--line);margin:14px 0}
 .setwrap{position:relative}
 .set-panel{position:absolute;top:34px;right:0;z-index:50;background:#161d2e;border:1px solid var(--line);
   border-radius:10px;padding:10px 12px;min-width:240px;box-shadow:0 8px 30px rgba(0,0,0,.5);
@@ -166,6 +186,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
 <main>
   <aside class="datei-leiste" id="dateiLeiste" hidden>
     <div class="pane-head"><span>Dateien</span><button id="btnDateiZu" class="mini" title="schliessen">&times;</button></div>
+    <ul id="zuletztListe"></ul>
     <div class="df-input">
       <input id="ordnerInput" placeholder="Ordnerpfad (leer = dieser Ordner)">
       <button id="btnOrdnerLaden">Laden</button>
@@ -185,15 +206,18 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
       </div>
     </div>
   </aside>
+  <div class="teiler" id="teilerLinks" hidden></div>
   <section class="pane editor-pane">
     <div class="tabs" id="tabs"></div>
     <div class="pane-head">
       <span>Code</span>
-      <span class="hint">Cmd/Ctrl + Enter = Ausfuehren &middot; Vorschlaege kommen automatisch, Liste auch mit Ctrl+Leertaste</span>
+      <span class="hint">Cmd/Ctrl+Enter = Ausfuehren &middot; F3 = zur Definition</span>
+      <button id="btnVorschau" class="mini" title="Markdown-Vorschau" hidden>&#128065;</button>
     </div>
-    <div class="editor-wrap"><div id="editor"></div></div>
+    <div class="editor-wrap" id="editorWrap"><div id="editor"></div></div>
+    <div class="md-vorschau" id="mdVorschau" hidden></div>
   </section>
-
+  <div class="teiler" id="teilerRechts"></div>
   <section class="pane out-pane">
     <div class="pane-head"><span>Ausgabe</span><span class="headtools"><button id="btnJump" class="mini" hidden>&#8594; Zeile</button><span class="hint" id="status"></span></span></div>
     <pre id="out"></pre>
@@ -272,7 +296,7 @@ var verlaufListe = [];
 var autoTimer = null;
 var THEMEN = ['ace/theme/tomorrow_night', 'ace/theme/tomorrow'];
 var schriftGroesse = 13;
-var einstellungen = { lernen: true, hinweise: true, variablen: true, erklaerung: true, autosave: true, zeilen: true, schrift: 13 };
+var einstellungen = { lernen: true, hinweise: true, variablen: true, erklaerung: true, autosave: true, zeilen: true, schrift: 13, edBreite: 0, leistenBreite: 0 };
 
 var currentRun = null;
 var pollTimer = null;
@@ -687,6 +711,109 @@ function einstellungenAnwenden() {
   document.getElementById('setZeilen').checked = einstellungen.zeilen;
   document.getElementById('setSchrift').value = einstellungen.schrift;
   document.getElementById('setSchriftWert').textContent = einstellungen.schrift;
+}
+
+function teilerInit() {
+  var teilerRechts = document.getElementById('teilerRechts');
+  var teilerLinks = document.getElementById('teilerLinks');
+  var editorPane = document.querySelector('.editor-pane');
+  var outPane = document.querySelector('.out-pane');
+  var leiste = document.getElementById('dateiLeiste');
+
+  function anwenden() {
+    if (!einstellungen.edBreite) { einstellungen.edBreite = Math.max(200, editorPane.getBoundingClientRect().width); }
+    if (!einstellungen.leistenBreite) { einstellungen.leistenBreite = leiste.getBoundingClientRect().width || 200; }
+    editorPane.style.flex = '0 0 ' + einstellungen.edBreite + 'px';
+    leiste.style.flex = '0 0 ' + einstellungen.leistenBreite + 'px';
+    outPane.style.flex = '1 1 0%';
+  }
+
+  function ziehen(teiler, vorher, istLinks) {
+    var startX = null, startBreite = null;
+    teiler.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      startX = e.clientX;
+      startBreite = vorher.getBoundingClientRect().width;
+      teiler.classList.add('zug');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      function move(ev) {
+        var neu = Math.max(120, startBreite + (ev.clientX - startX));
+        vorher.style.flex = '0 0 ' + neu + 'px';
+        if (istLinks) { einstellungen.leistenBreite = neu; } else { einstellungen.edBreite = neu; }
+      }
+      function up() {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        teiler.classList.remove('zug');
+        einstellungenSpeichern();
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  }
+  anwenden();
+  ziehen(teilerRechts, editorPane, false);
+  ziehen(teilerLinks, leiste, true);
+}
+
+function zuletztLaden() {
+  try { return JSON.parse(localStorage.getItem('pypad_zuletzt') || '[]'); } catch (e) { return []; }
+}
+
+function zuletztMerken(file) {
+  var key = slotKey(file.dir, file.name);
+  var liste = zuletztLaden().filter(function (x) { return x.key !== key; });
+  liste.unshift({ key: key, dir: file.dir, name: file.name, pfad: file.pfad });
+  try { localStorage.setItem('pypad_zuletzt', JSON.stringify(liste.slice(0, 10))); } catch (e) { }
+  zuletztAnzeigen();
+}
+
+function zuletztTitel(e) {
+  if (e.dir && e.dir.indexOf('lektionen/') === 0) {
+    var nr = e.dir.replace('lektionen/lektion-', '').split('-')[0];
+    return 'L' + nr + ' ' + e.name;
+  }
+  if (e.dir === 'snippets') { return 'Snippet ' + e.name; }
+  return e.name;
+}
+
+function zuletztAnzeigen() {
+  var ul = document.getElementById('zuletztListe');
+  var liste = zuletztLaden();
+  ul.innerHTML = '';
+  liste.forEach(function (e) {
+    var li = document.createElement('li');
+    li.textContent = zuletztTitel(e);
+    li.setAttribute('data-key', e.key);
+    ul.appendChild(li);
+  });
+}
+
+function dateiOeffnen(file) {
+  if (file.pfad) { ordnerDateiOeffnen(file.pfad); return; }
+  var key = slotKey(file.dir, file.name);
+  stashCurrent();
+  if (buffers[key]) {
+    enterSlot(key, file, buffers[key].code);
+    dirty = !!buffers[key].dirty;
+    showFileHint();
+    tabRegistrieren(key, file);
+    updateCursor();
+    return;
+  }
+  var url = (file.dir === 'snippets')
+    ? ('/file?name=' + encodeURIComponent(file.name))
+    : ('/file?dir=' + encodeURIComponent(file.dir) + '&name=' + encodeURIComponent(file.name));
+  fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+    if (d.code === undefined) { footHint.textContent = 'nicht gefunden'; return; }
+    buffers[key] = { code: d.code, dirty: false };
+    enterSlot(key, file, d.code);
+    tabRegistrieren(key, file);
+    updateCursor();
+  }).catch(function () { });
 }
 
 function einstellungenInit() {
@@ -1119,6 +1246,7 @@ function tabRegistrieren(key, file) {
     offeneTabs.push({ key: key, dir: file.dir, name: file.name, pfad: file.pfad });
   }
   tabAnzeigen();
+  zuletztMerken(file);
 }
 
 function tabTitel(t) {
@@ -1288,6 +1416,7 @@ function ordnerDateiOeffnen(pfad) {
   var key = slotKey('ordner', pfad);
   var file = { dir: 'ordner', name: pfad.split('/').pop(), pfad: pfad };
   stashCurrent();
+  zuletztMerken(file);
   if (!offeneTabs.some(function (t) { return t.key === key; })) {
     offeneTabs.push({ key: key, dir: 'ordner', name: file.name, pfad: pfad });
   }
@@ -1297,6 +1426,7 @@ function ordnerDateiOeffnen(pfad) {
     showFileHint();
     tabAnzeigen();
     updateCursor();
+    zuletztMerken(file);
     return;
   }
   fetch('/datei?pfad=' + encodeURIComponent(pfad))
@@ -1372,10 +1502,93 @@ function istPython() {
   return editor.session.getMode().$id === 'ace/mode/python';
 }
 
+var vorschauAn = false;
+
+function mdInline(text) {
+  var b = String.fromCharCode(96);
+  return text
+    .replace(new RegExp('\\*\\*(.+?)\\*\\*', 'g'), '<strong>$1</strong>')
+    .replace(new RegExp('\\*(.+?)\\*', 'g'), '<em>$1</em>')
+    .replace(new RegExp(b + '([^' + b + ']+)' + b, 'g'), '<code>$1</code>')
+    .replace(new RegExp('\\[([^\\]]+)\\]\\(([^)]+)\\)', 'g'), '<a href="$2" target="_blank">$1</a>');
+}
+
+function mdZuHtml(src) {
+  var zeilen = (src || '').split(String.fromCharCode(10));
+  var html = [];
+  var inCode = false, codeBuf = [], inList = false;
+  function listeZu() { if (inList) { html.push('</ul>'); inList = false; } }
+  zeilen.forEach(function (z) {
+    if (z.trim().indexOf('\u0060\u0060\u0060') === 0) {
+      if (inCode) { html.push('<pre><code>' + esc(codeBuf.join(String.fromCharCode(10))) + '</code></pre>'); codeBuf = []; inCode = false; }
+      else { listeZu(); inCode = true; }
+      return;
+    }
+    if (inCode) { codeBuf.push(z); return; }
+    var m = z.match(/^(#{1,6})\s+(.*)/);
+    if (m) { listeZu(); html.push('<h' + m[1].length + '>' + mdInline(esc(m[2])) + '</h' + m[1].length + '>'); return; }
+    if (/^\s*[-*]\s+/.test(z)) { if (!inList) { html.push('<ul>'); inList = true; } html.push('<li>' + mdInline(esc(z.replace(/^\s*[-*]\s+/, ''))) + '</li>'); return; }
+    if (/^\s*\d+\.\s+/.test(z)) { listeZu(); html.push('<p>' + mdInline(esc(z)) + '</p>'); return; }
+    if (/^\s*>\s?/.test(z)) { listeZu(); html.push('<blockquote>' + mdInline(esc(z.replace(/^\s*>\s?/, ''))) + '</blockquote>'); return; }
+    if (/^\s*---+\s*$/.test(z)) { listeZu(); html.push('<hr>'); return; }
+    if (z.trim() === '') { listeZu(); return; }
+    listeZu(); html.push('<p>' + mdInline(esc(z)) + '</p>');
+  });
+  if (inCode) { html.push('<pre><code>' + esc(codeBuf.join(String.fromCharCode(10))) + '</code></pre>'); }
+  if (inList) { html.push('</ul>'); }
+  return html.join(String.fromCharCode(10));
+}
+
+function vorschauZeigen() {
+  vorschauAn = true;
+  document.getElementById('mdVorschau').innerHTML = mdZuHtml(getCode());
+  document.getElementById('mdVorschau').hidden = false;
+  document.getElementById('editorWrap').style.display = 'none';
+  document.getElementById('btnVorschau').textContent = '\u270e';
+}
+
+function vorschauAus() {
+  vorschauAn = false;
+  document.getElementById('mdVorschau').hidden = true;
+  document.getElementById('editorWrap').style.display = '';
+  document.getElementById('btnVorschau').textContent = '\u1f441';
+}
+
+function vorschauUmschalten() {
+  if (vorschauAn) { vorschauAus(); } else { vorschauZeigen(); }
+}
+
+function definitionen() {
+  var map = {};
+  var zeilen = getCode().split(String.fromCharCode(10));
+  zeilen.forEach(function (z, i) {
+    var m = z.match(/^\s*(def|class)\s+([A-Za-z_]\w*)/);
+    if (m) { map[m[2]] = i; }
+  });
+  return map;
+}
+
+function geheZuDefinition() {
+  var pos = editor.getCursorPosition();
+  var name = editor.session.getTextRange(editor.session.getWordRange(pos.row, pos.column));
+  if (!name) { return; }
+  var map = definitionen();
+  if (map[name] !== undefined && map[name] !== pos.row) {
+    editor.scrollToLine(map[name], true, true, function () {});
+    editor.moveCursorTo(map[name], 0);
+    editor.focus();
+    footHint.textContent = 'Definition von ' + name + ' (Zeile ' + (map[name] + 1) + ')';
+  } else {
+    footHint.textContent = 'keine Definition fuer ' + name + ' gefunden';
+  }
+}
+
 function enterSlot(key, file, text) {
   loading = true;
   setCode(text);
   editor.session.setMode(modeFuer(file ? file.name : ''));
+  document.getElementById('btnVorschau').hidden = (editor.session.getMode().$id !== 'ace/mode/markdown');
+  vorschauAus();
   loading = false;
   currentKey = key;
   currentFile = file;
@@ -1559,9 +1772,13 @@ document.addEventListener('keydown', function (e) {
   } else if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
     e.preventDefault();
     saveFile();
+  } else if (e.key === 'F3') {
+    e.preventDefault();
+    if (istPython()) { geheZuDefinition(); }
   }
 });
 
+document.getElementById('btnVorschau').addEventListener('click', vorschauUmschalten);
 document.getElementById('btnFontUp').addEventListener('click', function () { setzeSchrift(schriftGroesse + 1); });
 document.getElementById('btnFontDown').addEventListener('click', function () { setzeSchrift(schriftGroesse - 1); });
 document.getElementById('btnTheme').addEventListener('click', function () {
@@ -1605,12 +1822,12 @@ stufeEl.addEventListener('change', function () { clearTimeout(autoTimer); });
 document.getElementById('btnDateien').addEventListener('click', function () {
   var as = document.getElementById('dateiLeiste');
   as.hidden = !as.hidden;
-  document.querySelector('main').classList.toggle('mit-dateien', !as.hidden);
+  document.getElementById('teilerLinks').hidden = as.hidden;
   if (!as.hidden) { ordnerLaden(); }
 });
 document.getElementById('btnDateiZu').addEventListener('click', function () {
   document.getElementById('dateiLeiste').hidden = true;
-  document.querySelector('main').classList.remove('mit-dateien');
+  document.getElementById('teilerLinks').hidden = true;
 });
 document.getElementById('btnOrdnerLaden').addEventListener('click', ordnerLaden);
 document.getElementById('ordnerInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { ordnerLaden(); } });
@@ -1627,6 +1844,13 @@ document.getElementById('btnGitRefresh').addEventListener('click', gitAktualisie
 document.getElementById('btnGitCommit').addEventListener('click', function () { gitBefehl('commit'); });
 document.getElementById('btnGitPush').addEventListener('click', function () { gitBefehl('push'); });
 document.getElementById('btnGitPull').addEventListener('click', function () { gitBefehl('pull'); });
+document.getElementById('zuletztListe').addEventListener('click', function (e) {
+  var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-key')) {
+    var z = zuletztLaden().filter(function (x) { return x.key === t.getAttribute('data-key'); })[0];
+    if (z) { dateiOeffnen(z); }
+  }
+});
 document.getElementById('gitStatus').addEventListener('click', function (e) {
   var t = e.target;
   if (t.getAttribute && t.getAttribute('data-diff')) { gitDiffZeigen(t.getAttribute('data-diff')); }
@@ -1678,6 +1902,8 @@ if (location.protocol === 'file:') {
 refreshFiles();
 loadLessons().then(ladeFortschritt);
 einstellungenInit();
+teilerInit();
+zuletztAnzeigen();
 </script>
 </body>
 </html>
