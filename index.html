@@ -36,7 +36,10 @@ main{flex:1;display:flex;flex-direction:row;min-height:0}
 @media (max-width:900px){main{flex-direction:column}.teiler{flex:0 0 6px;cursor:row-resize}.editor-pane,.out-pane{flex:1 1 50%}}
 .datei-leiste{display:flex;flex-direction:column;min-height:0;min-width:120px;flex:0 0 200px;background:#0e1524;border-right:1px solid var(--line);overflow:hidden}
 #zuletztListe{list-style:none;margin:0;padding:4px 0;border-bottom:1px solid var(--line)}
-#zuletztListe li{padding:4px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--dim);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#zuletztListe li{padding:4px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--dim);cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:space-between;gap:6px}
+#zuletztListe li .t{overflow:hidden;text-overflow:ellipsis}
+#zuletztListe li .x{color:var(--dim);flex-shrink:0;font-size:11px}
+#zuletztListe li .x:hover{color:var(--err);font-weight:700}
 #zuletztListe li:hover{background:#1b2338;color:var(--fg)}
 .df-input{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
 .df-input input{flex:1;min-width:0;background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;outline:none}
@@ -196,7 +199,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
 
 <main>
   <aside class="datei-leiste" id="dateiLeiste" hidden>
-    <div class="pane-head"><span>Dateien</span><button id="btnDateiZu" class="mini" title="schliessen">&times;</button></div>
+    <div class="pane-head"><span>Dateien</span><span><button id="btnOrdnerNeu" class="mini" title="Liste neu laden">&#8635;</button> <button id="btnDateiZu" class="mini" title="schliessen">&times;</button></span></div>
     <ul id="zuletztListe"></ul>
     <div class="df-input">
       <select id="verbindungSelect"><option value="">(lokal)</option></select>
@@ -845,7 +848,16 @@ function zuletztAnzeigen() {
   ul.innerHTML = '';
   liste.forEach(function (e) {
     var li = document.createElement('li');
-    li.textContent = zuletztTitel(e);
+    var txt = document.createElement('span');
+    txt.className = 't';
+    txt.textContent = zuletztTitel(e);
+    li.appendChild(txt);
+    var x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = String.fromCharCode(10005);
+    x.title = 'Eintrag aus dieser Liste entfernen (die Datei bleibt erhalten)';
+    x.setAttribute('data-zuletzt-weg', e.key);
+    li.appendChild(x);
     li.setAttribute('data-key', e.key);
     ul.appendChild(li);
   });
@@ -942,15 +954,14 @@ async function dateiLoeschen() {
   try {
     var d = await (await fetch(ziel, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
     if (!(d.deleted || d.ok)) { footHint.textContent = 'Loeschen fehlgeschlagen: ' + (d.error || '?'); return; }
+    var wegPfad = currentFile ? currentFile.pfad : null;
     dirty = false;
     clearTimeout(autoTimer);
-    if (key) { tabSchliessen(key); } else { currentFile = null; }
-    if (key) { delete buffers[key]; }
+    nachLoeschen(wegPfad, key);
+    currentFile = null;
     document.getElementById('btnLoeschen').hidden = true;
     footHint.textContent = 'geloescht: ' + anzeige;
-    if (typeof refreshFiles === 'function') { refreshFiles(); }
     if (typeof lektionenLaden === 'function') { lektionenLaden(); }
-    if (typeof ordnerLaden === 'function' && document.getElementById('dateiLeiste').hidden === false) { ordnerLaden(); }
   } catch (e) {
     footHint.textContent = 'Loeschen fehlgeschlagen (kein Kontakt?)';
   }
@@ -1585,12 +1596,37 @@ function gitVonGithubLaden() {
     .catch(function () { footHint.textContent = 'keine Verbindung zum PyPad-Server'; });
 }
 
+function zuletztEntfernen(pfad, key) {
+  var liste = zuletztLaden().filter(function (e) {
+    if (key && e.key === key) { return false; }
+    if (pfad && e.pfad === pfad) { return false; }
+    return true;
+  });
+  try { localStorage.setItem('pypad_zuletzt', JSON.stringify(liste)); } catch (e) { }
+  zuletztAnzeigen();
+}
+
+function nachLoeschen(pfad, key) {
+  zuletztEntfernen(pfad, key);
+  var treffer = offeneTabs.filter(function (t) {
+    return (key && t.key === key) || (pfad && t.pfad === pfad);
+  })[0];
+  if (treffer) {
+    if (treffer.key === currentKey) { dirty = false; clearTimeout(autoTimer); }
+    tabSchliessen(treffer.key);
+    delete buffers[treffer.key];
+  }
+  if (document.getElementById('ordnerInput').value.trim()) { ordnerLaden(); }
+  if (typeof refreshFiles === 'function') { refreshFiles(); }
+}
+
 function pfadLoeschen(pfad) {
   fetch('/pfad-loeschen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad }) })
     .then(function (r) { return r.json(); })
     .then(function (d) {
+      if (d.ok) { nachLoeschen(pfad); }
       footHint.textContent = d.ok ? ('geloescht: ' + pfad) : ('Loeschen fehlgeschlagen: ' + String(d.error || '?').slice(0, 90));
-      ordnerLaden();
+      if (!d.ok) { ordnerLaden(); }
     })
     .catch(function () { footHint.textContent = 'keine Verbindung'; });
 }
@@ -2118,6 +2154,7 @@ document.getElementById('btnDateien').addEventListener('click', function () {
   document.getElementById('teilerLinks').hidden = as.hidden;
   if (!as.hidden) { ordnerLaden(); }
 });
+document.getElementById('btnOrdnerNeu').addEventListener('click', ordnerLaden);
 document.getElementById('btnDateiZu').addEventListener('click', function () {
   document.getElementById('dateiLeiste').hidden = true;
   document.getElementById('teilerLinks').hidden = true;
@@ -2151,6 +2188,11 @@ document.getElementById('btnGitPush').addEventListener('click', function () { gi
 document.getElementById('btnGitPull').addEventListener('click', function () { gitBefehl('pull'); });
 document.getElementById('zuletztListe').addEventListener('click', function (e) {
   var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-zuletzt-weg')) {
+    zuletztEntfernen(null, t.getAttribute('data-zuletzt-weg'));
+    footHint.textContent = 'aus der Zuletzt-Liste entfernt (Datei bleibt erhalten)';
+    return;
+  }
   if (t.getAttribute && t.getAttribute('data-key')) {
     var z = zuletztLaden().filter(function (x) { return x.key === t.getAttribute('data-key'); })[0];
     if (z) { dateiOeffnen(z); }

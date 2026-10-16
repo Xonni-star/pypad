@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.12.1 - 2026-10-16
+
+**Gelöschte Dateien blieben in Listen stehen**
+- Die Liste "Zuletzt geöffnet" (oben in der Seitenleiste) kommt aus dem Browser-Speicher und wurde beim Löschen nicht aufgeräumt — die Datei war weg, stand aber weiter in der Liste
+- Jetzt: Beim Löschen (✕ in der Liste oder Papierkorb in der Editor-Leiste) verschwindet der Eintrag aus der Zuletzt-Liste, eine offene Registerkarte schließt sich, und die Ordnerliste wird immer aufgefrischt
+- Zuletzt-Einträge haben ein eigenes ✕ ("Eintrag aus der Liste entfernen — die Datei bleibt erhalten"), plus ein Aktualisieren-Knopf in der Kopfzeile der Seitenleiste
+
 ## 1.12.0 - 2026-10-16
 
 **Online-Variante: gleiche Lösch-Möglichkeiten wie offline**
