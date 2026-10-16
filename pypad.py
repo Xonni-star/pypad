@@ -850,7 +850,11 @@ def _fortschritt_lesen():
 
 
 def scope_nodes(scope):
-    """Alle Knoten eines Scopes, aber nicht in tiefere Scopes (Funktionen/Klassen) hinein."""
+    """Alle Knoten eines Scopes in Quelltext-Reihenfolge (nicht in tiefere Scopes hinein).
+
+    Die Reihenfolge ist wichtig: Pruefungen wie "zugewiesen, aber nie benutzt"
+    vergleichen, was vorher und was nachher passiert.
+    """
     result = []
     stack = list(ast.iter_child_nodes(scope))
     while stack:
@@ -859,6 +863,7 @@ def scope_nodes(scope):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
             continue
         stack.extend(ast.iter_child_nodes(node))
+    result.sort(key=lambda n: (getattr(n, "lineno", 0), getattr(n, "col_offset", 0)))
     return result
 
 
@@ -900,9 +905,10 @@ def lint_code(code):
     scopes = [tree] + [n for n in ast.walk(tree)
                        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     schon_gemeldet = set()
+    gelesen_irgendwo = {n.id for n in ast.walk(tree)
+                        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
     for scope in scopes:
         stores = {}
-        loads = set()
         for node in scope_nodes(scope):
             if isinstance(node, ast.Assign):
                 for target in node.targets:
@@ -910,14 +916,7 @@ def lint_code(code):
                         stores.setdefault(target.id, target)
             elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
                 stores.setdefault(node.target.id, node.target)
-            elif isinstance(node, ast.Name):
-                if isinstance(node.ctx, ast.Load):
-                    loads.add(node.id)
-                elif isinstance(node.ctx, ast.Store):
-                    loads.discard(node.id)
-        if scope is tree:
-            loads |= {n.id for n in ast.walk(tree)
-                      if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        loads = gelesen_irgendwo
         for name, node in stores.items():
             if name.startswith("_") or name in loads or node.lineno in schon_gemeldet:
                 continue

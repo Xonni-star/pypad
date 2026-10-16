@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.13.1 - 2026-10-16
+
+**Hinweise (Linter): Fehlalarme behoben**
+- Der Prüfer ging den Code in umgekehrter Reihenfolge durch — dadurch meldete er fast jede Zuweisung als "zugewiesen, aber nirgends benutzt", besonders innerhalb von Funktionen
+- Jetzt werden die Knoten in Quelltext-Reihenfolge ausgewertet und ein Name gilt als benutzt, wenn er irgendwo im Code gelesen wird
+- Ergebnis: das Lektion-08-Beispiel erzeugt keine Hinweise mehr; echte Funde (unbenutzte Variable, unbenutzter Import) werden weiter gemeldet
+
 ## 1.13.0 - 2026-10-16
 
 **Lektionen sind geschützt — nur die eigenen Dateien sind löschbar**
