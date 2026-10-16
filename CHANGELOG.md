@@ -1,5 +1,22 @@
 # Änderungen
 
+## 1.4.0 - 2026-10-16
+
+**Online-Variante: gleiche Funktionen wie offline**
+- Autovervollstaendigung aus dem echten Python (auch Attribute wie math.sqrt)
+- Fehler-Erklaerung in Klartext mit Tipps
+- Hinweise (Linter) vor dem Lauf, gelb markiert
+- Variablen am Ende des Laufs
+- Tabs, Code-Faltung, Zeile:Spalte, Ausgaben-Deckel, hell/dunkel + Schriftgroesse
+
+## 1.3.2 - 2026-10-16
+
+- Bugfix: Anmeldung und Oberflaeche waren gleichzeitig sichtbar (hidden-Regel ergaenzt)
+
+## 1.3.1 - 2026-10-16
+
+- Bugfix: Login-Skript der Online-Variante repariert
+
 ## 1.3.0 - 2026-10-16
 
 **Online-Variante (PyPad Server)**
