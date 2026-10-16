@@ -52,6 +52,9 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Darstellung umschaltbar**: hell/dunkel und Schriftgröße (wird gemerkt)
 - **Einstellungen** (⚙): Lernen-Leiste, Hinweise, Variablen-Anzeige, Fehler-Erklärung,
   Auto-Speichern und Zeilennummern ein-/ausblenden; Schriftgröße per Regler
+- **Als Code-Editor:** Datei-Browser (beliebigen Ordner öffnen, .py-Dateien auflisten,
+  öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
+- **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Snippets** speichern / laden / löschen
 - **Lernbereich:** Lektionen mit *Beispiel / Übung / Lösung*; Wechseln verliert keine Eingaben,
   Übungen werden automatisch gesichert

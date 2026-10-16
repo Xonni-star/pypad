@@ -77,6 +77,16 @@ LESSON_DIR = APP_DIR / "lektionen"
 LESSON_SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 
 
+def abs_pfad(pfad):
+    """Beliebigen Pfad sauber aufloesen - fuer den Datei-Browser (echter Editor)."""
+    roh = (pfad or "").strip()
+    p = Path(roh).expanduser() if roh else APP_DIR
+    try:
+        return p.resolve()
+    except OSError:
+        return p
+
+
 def resolve_dir(rel):
     """Erlaubte Ordner: 'snippets' oder 'lektionen/<lektion>' - sonst None."""
     rel = (rel or "snippets").strip().strip("/")
@@ -1025,6 +1035,7 @@ class Handler(BaseHTTPRequestHandler):
                 "timeout": MAX_RUNTIME,
                 "snippets": str(SNIPPET_DIR),
                 "playground": str(WORKDIR),
+                "app": str(APP_DIR),
             })
             return
         if url.path == "/fortschritt":
@@ -1047,6 +1058,27 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 data = []
             self._json({"lektionen": data})
+            return
+        if url.path == "/ordner":
+            query = parse_qs(url.query)
+            pfad = abs_pfad((query.get("pfad") or [""])[0])
+            if not pfad.is_dir():
+                self._json({"error": "kein Ordner: " + str(pfad)}, 400)
+                return
+            dateien = sorted(p.name for p in pfad.glob("*.py"))
+            self._json({"pfad": str(pfad), "dateien": dateien})
+            return
+        if url.path == "/datei":
+            query = parse_qs(url.query)
+            pfad = abs_pfad((query.get("pfad") or [""])[0])
+            if not pfad.is_file():
+                self._json({"error": "keine Datei: " + str(pfad)}, 404)
+                return
+            try:
+                self._json({"pfad": str(pfad), "name": pfad.name,
+                            "code": pfad.read_text(encoding="utf-8", errors="replace")})
+            except Exception as exc:
+                self._json({"error": str(exc)}, 500)
             return
         if url.path == "/files":
             query = parse_qs(url.query)
@@ -1216,6 +1248,20 @@ class Handler(BaseHTTPRequestHandler):
                 "returncode": run.proc.returncode,
                 "ms": int((time.time() - started) * 1000),
             })
+            return
+
+        if url.path == "/datei":
+            pfad = abs_pfad(data.get("pfad"))
+            code = data.get("code")
+            if code is None:
+                self._json({"error": "kein Code"}, 400)
+                return
+            try:
+                pfad.parent.mkdir(parents=True, exist_ok=True)
+                pfad.write_text(code, encoding="utf-8")
+                self._json({"gespeichert": str(pfad)})
+            except Exception as exc:
+                self._json({"error": str(exc)}, 500)
             return
 
         if url.path == "/file":

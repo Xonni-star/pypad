@@ -29,6 +29,19 @@ button.run{background:var(--acc);color:#06210f;font-weight:700;border-color:var(
 button.run:hover:not(:disabled){filter:brightness(1.08)}
 button.stop{background:#3a2230;border-color:#5b2f3f;color:#ffc9d6}
 main{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
+main.mit-dateien{grid-template-columns:200px 1fr 1fr}
+.datei-leiste{display:flex;flex-direction:column;min-height:0;min-width:0;background:#0e1524;border-right:1px solid var(--line);overflow:hidden}
+.df-input{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
+.df-input input{flex:1;min-width:0;background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;outline:none}
+#dateiListe{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
+#dateiListe li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dateiListe li:hover{background:#1b2338}
+.tabs{display:flex;gap:2px;padding:4px 8px 0;background:#131a29;overflow-x:auto;border-bottom:1px solid var(--line);min-height:30px}
+.tab{display:flex;align-items:center;gap:6px;padding:5px 10px;background:#1b2338;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;font-size:12px;color:var(--dim);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.tab.aktiv{background:#0c1120;color:var(--fg);font-weight:600}
+.tab.punkt{color:#ffd479}
+.tab .schliessen{color:var(--dim);cursor:pointer}
+.tab .schliessen:hover{color:var(--err)}
 @media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
 .pane{display:flex;flex-direction:column;min-height:0;min-width:0}
 .editor-pane{border-right:1px solid var(--line)}
@@ -106,6 +119,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <button id="btnSave">Speichern</button>
   <button id="btnDelete">Loeschen</button>
   <button id="btnNew">Neu</button>
+  <button id="btnDateien" class="mini" title="Datei-Browser">&#128451;</button>
   <button id="btnFontDown" class="mini" title="Schrift kleiner">A&#8722;</button>
   <button id="btnFontUp" class="mini" title="Schrift groesser">A+</button>
   <button id="btnTheme" class="mini" title="Hell/Dunkel">&#9788;</button>
@@ -140,7 +154,16 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
 </div>
 
 <main>
+  <aside class="datei-leiste" id="dateiLeiste" hidden>
+    <div class="pane-head"><span>Dateien</span><button id="btnDateiZu" class="mini" title="schliessen">&times;</button></div>
+    <div class="df-input">
+      <input id="ordnerInput" placeholder="Ordnerpfad (leer = dieser Ordner)">
+      <button id="btnOrdnerLaden">Laden</button>
+    </div>
+    <ul id="dateiListe"></ul>
+  </aside>
   <section class="pane editor-pane">
+    <div class="tabs" id="tabs"></div>
     <div class="pane-head">
       <span>Code</span>
       <span class="hint">Cmd/Ctrl + Enter = Ausfuehren &middot; Vorschlaege kommen automatisch, Liste auch mit Ctrl+Leertaste</span>
@@ -178,6 +201,9 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <button id="btnClear">Ausgabe leeren</button>
   <button id="btnVerlauf">Verlauf</button>
   <span class="hint" id="footHint"></span>
+  <span class="spacer"></span>
+  <span class="hint" id="dirtyDot" style="visibility:hidden" title="ungespeichert">&#9679;</span>
+  <span class="hint" id="cursorPos">1:1</span>
 </footer>
 
 <script src="vendor/ace.js"></script>
@@ -225,6 +251,7 @@ var pollTimer = null;
 var pollFails = 0;
 var currentFile = null;
 var buffers = {};
+var offeneTabs = [];
 var currentKey = null;
 var dirty = false;
 var loading = false;
@@ -268,7 +295,9 @@ editor.setOptions({
   enableBasicAutocompletion: true,
   enableLiveAutocompletion: true,
   enableSnippets: true,
-  enableAutoIndent: true
+  enableAutoIndent: true,
+  foldStyle: 'markbegin',
+  showFoldWidgets: true
 });
 editor.renderer.setScrollMargin(8, 8);
 editor.setValue(DEFAULT_CODE, -1);
@@ -379,6 +408,8 @@ function nearBottom() {
   return (outEl.scrollHeight - outEl.scrollTop - outEl.clientHeight) < 40;
 }
 
+var outMax = 1500;
+
 function appendChunk(kind, text) {
   var span = document.createElement('span');
   if (kind === 'err') { span.className = 'err'; }
@@ -386,7 +417,22 @@ function appendChunk(kind, text) {
   else if (kind === 'echo') { span.className = 'echo'; }
   span.textContent = text;
   outEl.appendChild(span);
+  if (outEl.childElementCount > outMax) {
+    var weg = Math.floor(outEl.childElementCount / 2);
+    while (weg > 0 && outEl.firstChild) { outEl.removeChild(outEl.firstChild); weg--; }
+    var merker = document.createElement('span');
+    merker.className = 'dim';
+    merker.textContent = '\u2026 aeltere Ausgabe ausgeblendet (zu lang) \u2026\n';
+    outEl.insertBefore(merker, outEl.firstChild);
+  }
   return span;
+}
+
+function updateCursor() {
+  var p = editor.getCursorPosition();
+  document.getElementById('cursorPos').textContent = (p.row + 1) + ':' + (p.column + 1);
+  document.getElementById('dirtyDot').style.visibility = dirty ? 'visible' : 'hidden';
+  tabPunkt();
 }
 
 function showBanner(txt) {
@@ -1029,6 +1075,128 @@ function stopRun() {
   }).catch(function () { });
 }
 
+function tabRegistrieren(key, file) {
+  if (!offeneTabs.some(function (t) { return t.key === key; })) {
+    offeneTabs.push({ key: key, dir: file.dir, name: file.name, pfad: file.pfad });
+  }
+  tabAnzeigen();
+}
+
+function tabTitel(t) {
+  if (t.dir && t.dir.indexOf('lektionen/') === 0) {
+    var nr = t.dir.replace('lektionen/lektion-', '').split('-')[0];
+    return (nr || '') + '/' + t.name;
+  }
+  return t.name;
+}
+
+function tabAnzeigen() {
+  var el = document.getElementById('tabs');
+  el.innerHTML = '';
+  offeneTabs.forEach(function (t) {
+    var span = document.createElement('span');
+    span.className = 'tab' + (t.key === currentKey ? ' aktiv' : '');
+    var lab = document.createElement('span');
+    lab.textContent = tabTitel(t);
+    lab.setAttribute('data-key', t.key);
+    span.appendChild(lab);
+    var x = document.createElement('span');
+    x.className = 'schliessen';
+    x.textContent = ' \u00d7';
+    x.setAttribute('data-close', t.key);
+    span.appendChild(x);
+    el.appendChild(span);
+  });
+  tabPunkt();
+}
+
+function tabPunkt() {
+  var aktive = document.querySelector('#tabs .tab.aktiv');
+  if (!aktive) { return; }
+  if (dirty) { aktive.classList.add('punkt'); } else { aktive.classList.remove('punkt'); }
+}
+
+function tabAktivieren(key) {
+  var t = offeneTabs.filter(function (x) { return x.key === key; })[0];
+  if (!t) { return; }
+  stashCurrent();
+  var file = { dir: t.dir, name: t.name, pfad: t.pfad };
+  if (buffers[key]) {
+    enterSlot(key, file, buffers[key].code);
+    dirty = !!buffers[key].dirty;
+    showFileHint();
+    tabAnzeigen();
+    updateCursor();
+  }
+}
+
+function tabSchliessen(key) {
+  stashCurrent();
+  var idx = offeneTabs.findIndex(function (x) { return x.key === key; });
+  if (idx >= 0) { offeneTabs.splice(idx, 1); }
+  delete buffers[key];
+  if (key === currentKey) {
+    var naechste = offeneTabs[Math.max(0, idx - 1)];
+    if (naechste) { tabAktivieren(naechste.key); }
+    else {
+      currentKey = null;
+      currentFile = null;
+      loading = true;
+      setCode(DEFAULT_CODE);
+      loading = false;
+      dirty = false;
+      showFileHint();
+    }
+  }
+  tabAnzeigen();
+}
+
+function ordnerLaden() {
+  var eingabe = document.getElementById('ordnerInput');
+  var pfad = eingabe.value.trim() || '';
+  fetch('/ordner?pfad=' + encodeURIComponent(pfad))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d) { footHint.textContent = 'Ordner nicht gefunden'; return; }
+      if (!eingabe.value.trim()) { eingabe.value = d.pfad; }
+      var ul = document.getElementById('dateiListe');
+      ul.innerHTML = '';
+      (d.dateien || []).forEach(function (name) {
+        var li = document.createElement('li');
+        li.textContent = name;
+        li.setAttribute('data-pfad', d.pfad + '/' + name);
+        ul.appendChild(li);
+      });
+      if (!d.dateien.length) { footHint.textContent = 'keine .py-Dateien in ' + d.pfad; }
+    }).catch(function () { footHint.textContent = 'keine Verbindung'; });
+}
+
+function ordnerDateiOeffnen(pfad) {
+  var key = slotKey('ordner', pfad);
+  var file = { dir: 'ordner', name: pfad.split('/').pop(), pfad: pfad };
+  stashCurrent();
+  if (!offeneTabs.some(function (t) { return t.key === key; })) {
+    offeneTabs.push({ key: key, dir: 'ordner', name: file.name, pfad: pfad });
+  }
+  if (buffers[key]) {
+    enterSlot(key, file, buffers[key].code);
+    dirty = !!buffers[key].dirty;
+    showFileHint();
+    tabAnzeigen();
+    updateCursor();
+    return;
+  }
+  fetch('/datei?pfad=' + encodeURIComponent(pfad))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d || d.code === undefined) { footHint.textContent = 'Datei nicht lesbar'; return; }
+      buffers[key] = { code: d.code, dirty: false };
+      enterSlot(key, file, d.code);
+      tabAnzeigen();
+      updateCursor();
+    }).catch(function () { footHint.textContent = 'keine Verbindung'; });
+}
+
 async function loadLessons() {
   try {
     var res = await fetch('/lektionen');
@@ -1108,6 +1276,8 @@ async function openLesson(kind) {
     enterSlot(key, file, buffers[key].code);
     dirty = !!buffers[key].dirty;
     showFileHint();
+    tabRegistrieren(key, file);
+    updateCursor();
     return;
   }
   try {
@@ -1121,6 +1291,8 @@ async function openLesson(kind) {
     var data = await res.json();
     buffers[key] = { code: data.code, dirty: false };
     enterSlot(key, file, data.code);
+    tabRegistrieren(key, file);
+    updateCursor();
   } catch (e) {
     loadHint.textContent = 'kein Kontakt zum PyPad-Server';
   }
@@ -1149,6 +1321,8 @@ async function loadFile() {
     enterSlot(key, file, buffers[key].code);
     dirty = !!buffers[key].dirty;
     showFileHint();
+    tabRegistrieren(key, file);
+    updateCursor();
     return;
   }
   var res = await fetch('/file?name=' + encodeURIComponent(name));
@@ -1156,12 +1330,30 @@ async function loadFile() {
   if (data.code !== undefined) {
     buffers[key] = { code: data.code, dirty: false };
     enterSlot(key, file, data.code);
+    tabRegistrieren(key, file);
+    updateCursor();
     footHint.textContent = 'geladen: ' + data.name;
   }
 }
 
 async function saveFile() {
   if (currentFile) {
+    if (currentFile.pfad) {
+      fetch('/datei', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pfad: currentFile.pfad, code: getCode() })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.gespeichert) {
+          dirty = false;
+          if (currentKey && buffers[currentKey]) { buffers[currentKey] = { code: getCode(), dirty: false }; }
+          showFileHint();
+          updateCursor();
+        }
+        footHint.textContent = d.gespeichert ? ('gespeichert: ' + d.gespeichert) : ('Fehler: ' + (d.error || 'unbekannt'));
+      }).catch(function () { footHint.textContent = 'Speichern fehlgeschlagen'; });
+      return;
+    }
     try {
       var res1 = await fetch('/file', {
         method: 'POST',
@@ -1212,12 +1404,14 @@ async function deleteFile() {
 
 editor.on('change', function () {
   updateStdinHint();
+  updateCursor();
   if (loading) { return; }
   dirty = true;
   showFileHint();
   clearTimeout(autoTimer);
   autoTimer = setTimeout(autoSpeichern, 1500);
 });
+editor.selection.on('changeCursor', updateCursor);
 
 window.addEventListener('beforeunload', function (e) {
   var unsaved = stashCurrent();
@@ -1280,6 +1474,27 @@ outEl.addEventListener('click', function (e) {
   }
 });
 stufeEl.addEventListener('change', function () { clearTimeout(autoTimer); });
+document.getElementById('btnDateien').addEventListener('click', function () {
+  var as = document.getElementById('dateiLeiste');
+  as.hidden = !as.hidden;
+  document.querySelector('main').classList.toggle('mit-dateien', !as.hidden);
+  if (!as.hidden) { ordnerLaden(); }
+});
+document.getElementById('btnDateiZu').addEventListener('click', function () {
+  document.getElementById('dateiLeiste').hidden = true;
+  document.querySelector('main').classList.remove('mit-dateien');
+});
+document.getElementById('btnOrdnerLaden').addEventListener('click', ordnerLaden);
+document.getElementById('ordnerInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { ordnerLaden(); } });
+document.getElementById('dateiListe').addEventListener('click', function (e) {
+  var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-pfad')) { ordnerDateiOeffnen(t.getAttribute('data-pfad')); }
+});
+document.getElementById('tabs').addEventListener('click', function (e) {
+  var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-close')) { tabSchliessen(t.getAttribute('data-close')); return; }
+  if (t.getAttribute && t.getAttribute('data-key')) { tabAktivieren(t.getAttribute('data-key')); return; }
+});
 
 runBtn.addEventListener('click', startRun);
 document.getElementById('btnDebug').addEventListener('click', debugStart);
@@ -1313,6 +1528,7 @@ document.getElementById('btnUebung').addEventListener('click', function () { ope
 document.getElementById('btnLoesung').addEventListener('click', function () { openLesson('LOESUNG'); });
 
 updateStdinHint();
+updateCursor();
 busy(false);
 
 if (location.protocol === 'file:') {
