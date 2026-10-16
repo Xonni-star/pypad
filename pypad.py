@@ -300,12 +300,15 @@ def github_laden(ziel_ordner, url, branch=None, token=None):
         fehler = ((fertig.stderr or "") + (fertig.stdout or "")).strip()
         shutil.rmtree(ziel, ignore_errors=True)
         klein = fehler.lower()
-        if "could not resolve host" in klein or "network is unreachable" in klein:
+        if "could not resolve host" in klein or "network is unreachable" in klein or "konnte nicht aufgel" in klein:
             return {"error": "Keine Verbindung zu github.com - ist Internet da?"}
-        if "authentication failed" in klein or "invalid username or password" in klein:
-            return {"error": "Anmeldung fehlgeschlagen - fuer private Repos braucht es ein Token."}
-        if "could not read from remote repository" in klein or "repository not found" in klein:
-            return {"error": "Repo nicht gefunden (oder privat - dann Token noetig)."}
+        if ("authentication failed" in klein or "invalid username or password" in klein
+                or "authentifizierung fehlgeschlagen" in klein
+                or "could not read from remote repository" in klein
+                or "repository not found" in klein or "repository nicht gefunden" in klein):
+            return {"error": "Repo nicht gefunden oder privat. Bei privaten Repos braucht es eine Anmeldung (Token)."}
+        if "already exists" in klein or "existiert bereits" in klein:
+            return {"error": "Der Ordner liegt hier schon."}
         return {"error": fehler[-400:] or "git clone ist fehlgeschlagen."}
     dateien = [p for p in ziel.rglob("*") if p.is_file()]
     return {"ok": True, "ordner": str(ziel), "name": repo, "dateien": len(dateien)}

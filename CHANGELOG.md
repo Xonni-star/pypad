@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.6.1 - 2026-10-16
+
+**Bugfix: Knoepfe im Git-Panel**
+- Online: "Laden" (GitHub) und "Commit" wurden von der Adresszeile zusammengedrueckt und waren kaum lesbar - das Eingabefeld darf jetzt schrumpfen, die Knoepfe behalten ihre Breite
+- Online: der Aktualisieren-Knopf (Grafik) im Git-Kopf hatte dieselbe ID wie der neue Laden-Knopf - dadurch loeste er das Laden aus, und der sichtbare Laden-Knopf tat nichts
+- Offline: gleiche Absicherung fuer die Knoepfe in Git- und Ordner-Zeile
+- Klarere Meldung beim Laden: "Repo nicht gefunden oder privat" (GitHub meldet bei nicht vorhandenen Repos einen Anmeldefehler)
+
 ## 1.6.0 - 2026-10-16
 
 **Code von GitHub laden (offline und online)**

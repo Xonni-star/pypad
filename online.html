@@ -67,7 +67,9 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
 .dbg{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#1b2338;border-top:1px solid var(--line);flex-wrap:wrap}
 .dbgz{color:#ffd479;font-weight:700;font-size:12px;min-width:64px}
 .df{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#0e1524;border-top:1px solid var(--line)}
-.df input{flex:1}
+.df input{flex:1;min-width:0}
+.df button,.head button{flex-shrink:0;white-space:nowrap}
+#gitBranch,#wer{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .chev{color:var(--acc);font:13px ui-monospace,Menlo,monospace}
 </style>
 </head>
@@ -108,7 +110,7 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
       <div class="df">Workspace:<br><span id="ws">...</span></div>
       <ul id="files"></ul>
       <div class="git">
-        <div class="head"><span>Git</span><span id="gitBranch" class="hint"></span><span class="spacer"></span><button id="btnGitLaden" class="mini">&#8635;</button></div>
+        <div class="head"><span>Git</span><span id="gitBranch" class="hint"></span><span class="spacer"></span><button id="btnGitRefresh" class="mini" title="aktualisieren">&#8635;</button></div>
         <div class="gitStatus" id="gitStatus"></div>
         <div class="df"><input id="gitUrl" placeholder="GitHub: user/repo"><button id="btnGitLaden" class="mini" title="Repo von GitHub klonen">Laden</button></div>
         <div class="df"><input id="gitMsg" placeholder="Commit-Nachricht"><button id="btnGitCommit" class="mini">Commit</button></div>
@@ -555,7 +557,7 @@ elem('btnDebug').addEventListener('click', debugStart);
 elem('btnSchritt').addEventListener('click', function(){ debugBefehl('step'); });
 elem('btnWeiter').addEventListener('click', function(){ debugBefehl('run'); });
 elem('btnDbgStop').addEventListener('click', function(){ debugBefehl('stop'); });
-elem('btnGitLaden').addEventListener('click', gitLaden);
+elem('btnGitRefresh').addEventListener('click', gitLaden);
 elem('btnGitCommit').addEventListener('click', function(){ gitBefehl('commit'); });
 elem('btnGitPush').addEventListener('click', function(){ gitBefehl('push'); });
 elem('btnGitPull').addEventListener('click', function(){ gitBefehl('pull'); });
