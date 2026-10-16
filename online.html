@@ -10,9 +10,10 @@
 [hidden]{display:none !important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column}
-input,button,select{background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 11px;font-size:13px;outline:none}
+input,button,select{background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:7px 10px;font-size:13px;outline:none}
 button{cursor:pointer}
 button:hover{background:#28334d}
+button:disabled{opacity:.45;cursor:default}
 button.run{background:var(--acc);color:#06210f;font-weight:700;border-color:var(--acc)}
 button.mini{padding:4px 9px;font-size:12px}
 .login{max-width:340px;margin:12vh auto 0;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:10px}
@@ -28,24 +29,28 @@ header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var
 .set-panel{position:absolute;top:34px;right:0;z-index:50;background:#161d2e;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:200px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
 .set-panel label{font-size:13px;display:flex;gap:8px;align-items:center;cursor:pointer}
 #usersPanel{background:#131a29;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#app{display:flex;flex-direction:column;flex:1;min-height:0}
 main{flex:1;display:flex;min-height:0}
-.leiste{width:200px;min-width:150px;background:#0e1524;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.leiste{width:220px;min-width:170px;background:#0e1524;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
 .leiste .df{padding:8px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--line);word-break:break-all}
 #files{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #files li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #files li:hover{background:#1b2338}
+.git{border-top:1px solid var(--line);display:flex;flex-direction:column;max-height:45%;overflow:auto}
+.gitStatus{overflow:auto}
+.gitStatus .z{padding:3px 8px;font:11px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gitStatus .z:hover{background:#1b2338}
 .pane{display:flex;flex-direction:column;min-width:0;flex:1}
 .pane+.pane{border-left:1px solid var(--line)}
 .tabs{display:flex;gap:2px;padding:4px 8px 0;background:#131a29;overflow-x:auto;min-height:28px;border-bottom:1px solid var(--line)}
 .tab{display:flex;align-items:center;gap:6px;padding:4px 9px;background:#1b2338;border:1px solid var(--line);border-bottom:none;border-radius:7px 7px 0 0;font-size:12px;color:var(--dim);cursor:pointer;white-space:nowrap;flex-shrink:0}
 .tab.aktiv{background:#0c1120;color:var(--fg);font-weight:600}
-.tab.punkt{color:#ffd479}
 .tab .x{color:var(--dim)}
 .tab .x:hover{color:var(--err)}
 .head{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;color:var(--dim);background:#131a29;border-bottom:1px solid var(--line)}
 #editor{flex:1;min-height:0}
 .ace_marker-layer .pypad-warn-range{position:absolute;z-index:20;background:rgba(255,200,80,.32);border-bottom:2px solid #ffc850;border-radius:3px}
-.ace_marker-layer .pypad-err-range{position:absolute;z-index:21;background:rgba(255,90,90,.4);border-bottom:2px solid #ff6b6b;border-radius:3px}
+.ace_marker-layer .pypad-debug{position:absolute;z-index:22;background:rgba(255,212,121,.3);border-left:3px solid #ffd479}
 pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:13px/1.6 ui-monospace,Menlo,monospace;background:#0c1120}
 #out .err{color:var(--err)}
 #out .dim{color:var(--dim)}
@@ -58,8 +63,11 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
 #out .vars{display:block;margin:8px 0 4px;padding:8px 12px;border-left:3px solid #6ea8fe;background:#182034;border-radius:6px;white-space:pre-wrap}
 #out .vars .vh{color:#9dc1ff;font-weight:700}
 #out .vars .vt{color:#d7e5ff}
+.dbg{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#1b2338;border-top:1px solid var(--line);flex-wrap:wrap}
+.dbgz{color:#ffd479;font-weight:700;font-size:12px;min-width:64px}
 .df{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#0e1524;border-top:1px solid var(--line)}
 .df input{flex:1}
+.chev{color:var(--acc);font:13px ui-monospace,Menlo,monospace}
 </style>
 </head>
 <body>
@@ -98,6 +106,12 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
     <aside class="leiste">
       <div class="df">Workspace:<br><span id="ws">...</span></div>
       <ul id="files"></ul>
+      <div class="git">
+        <div class="head"><span>Git</span><span id="gitBranch" class="hint"></span><span class="spacer"></span><button id="btnGitLaden" class="mini">&#8635;</button></div>
+        <div class="gitStatus" id="gitStatus"></div>
+        <div class="df"><input id="gitMsg" placeholder="Commit-Nachricht"><button id="btnGitCommit" class="mini">Commit</button></div>
+        <div class="df"><button id="btnGitPush" class="mini">Push</button><button id="btnGitPull" class="mini">Pull</button></div>
+      </div>
     </aside>
     <section class="pane">
       <div class="tabs" id="tabs"></div>
@@ -105,9 +119,20 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
       <div id="editor"></div>
     </section>
     <section class="pane">
-      <div class="head"><span>Ausgabe</span><span id="status" class="hint"></span><span class="spacer"></span><button id="btnRun" class="mini run">&#9654; Ausfuehren</button></div>
+      <div class="head"><span>Ausgabe</span><span id="status" class="hint"></span><span class="spacer"></span>
+        <button id="btnStop" class="mini" disabled>&#9632; Stopp</button>
+        <button id="btnDebug" class="mini">&#128027; Debug</button>
+        <button id="btnRun" class="mini run">&#9654; Ausfuehren</button></div>
       <pre id="out"></pre>
-      <div class="df">stdin: <input id="stdin" placeholder="Eingabe fuer input()"></div>
+      <div class="dbg" id="dbgPanel" hidden>
+        <span class="dbgz" id="dbgZeile">bereit</span>
+        <button id="btnSchritt" class="mini">&#9656; Schritt</button>
+        <button id="btnWeiter" class="mini">&#9656;&#9656; Weiter</button>
+        <button id="btnDbgStop" class="mini">&#9632; Ende</button>
+        <span class="hint" id="dbgVars"></span>
+      </div>
+      <div class="df"><span class="chev">&gt;</span><input id="live" placeholder="Eingabe an das laufende Programm ... (Enter)" disabled></div>
+      <div class="df">stdin (vorab): <input id="stdin" placeholder="Eingabe fuer input()"></div>
     </section>
   </main>
 </div>
@@ -119,27 +144,32 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
 <script src="vendor/ext-language_tools.js"></script>
 <script>
 var editor = null, binAdmin = false, aktuellerPfad = null, outMax = 1500, schrift = 13;
-var offeneTabs = [], puffer = {}, langTools = null;
+var offeneTabs = [], puffer = {}, langTools = null, AceRange = null;
+var laufId = null, laufTimer = null, laufFrom = 0;
+var debugId = null, debugTimer = null, debugFrom = 0, debugMarker = null;
 
 function nl() { return String.fromCharCode(10); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function post(pfad, daten) { return fetch(pfad, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(daten||{}) }); }
 function get(pfad) { return fetch(pfad); }
+function elem(id) { return document.getElementById(id); }
 
-function zeigeLogin() { document.getElementById('login').hidden = false; document.getElementById('app').hidden = true; }
+function zeigeLogin() { elem('login').hidden = false; elem('app').hidden = true; }
 function zeigeApp(who) {
-  document.getElementById('login').hidden = true;
-  document.getElementById('app').hidden = false;
-  document.getElementById('wer').textContent = who.user + (who.admin ? ' (Admin)' : '');
+  elem('login').hidden = true;
+  elem('app').hidden = false;
+  elem('wer').textContent = who.user + (who.admin ? ' (Admin)' : '');
   binAdmin = who.admin;
-  document.getElementById('btnUsers').hidden = !who.admin;
+  elem('btnUsers').hidden = !who.admin;
   initEditor();
   ladeDateien('');
+  gitLaden();
 }
 
 function initEditor() {
   if (editor) { return; }
   langTools = ace.require('ace/ext/language_tools');
+  AceRange = ace.require('ace/range').Range;
   editor = ace.edit('editor');
   editor.setTheme(localStorage.getItem('pypad_theme') || 'ace/theme/tomorrow_night');
   editor.session.setMode('ace/mode/python');
@@ -160,7 +190,7 @@ function ladeSchrift() {
 
 function zeigeCursor() {
   var p = editor.getCursorPosition();
-  document.getElementById('cursor').textContent = (p.row + 1) + ':' + (p.column + 1);
+  elem('cursor').textContent = (p.row + 1) + ':' + (p.column + 1);
 }
 
 function dottedChain(session, pos) {
@@ -178,32 +208,28 @@ var pyCompleter = {
     post('/api/complete', { code: session.getValue(), prefix: query })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var out = (d.words || []).map(function(w){ return { value: w, meta: chain ? 'attribut' : 'python', score: 500 }; });
-        callback(null, out);
+        callback(null, (d.words || []).map(function(w){ return { value: w, meta: chain ? 'attribut' : 'python', score: 500 }; }));
       })
       .catch(function(){ callback(null, []); });
   }
 };
 
 async function anmelden() {
-  var r = await post('/api/login', { user: document.getElementById('lu').value.trim(), pass: document.getElementById('lp').value });
+  var r = await post('/api/login', { user: elem('lu').value.trim(), pass: elem('lp').value });
   var d = await r.json();
-  if (d.ok) { document.getElementById('lerr').textContent = ''; boot(); }
-  else { document.getElementById('lerr').textContent = d.error || 'Anmeldung fehlgeschlagen'; }
+  if (d.ok) { elem('lerr').textContent = ''; boot(); }
+  else { elem('lerr').textContent = d.error || 'Anmeldung fehlgeschlagen'; }
 }
 
 async function boot() {
   var r = await get('/api/whoami');
   if (r.status === 401) { zeigeLogin(); return; }
-  var who = await r.json();
-  zeigeApp(who);
-  if (who.admin) { ladeNutzer(); }
+  zeigeApp(await r.json());
 }
 
 async function ladeDateien(pfad) {
-  var r = await get('/api/files?pfad=' + encodeURIComponent(pfad || ''));
-  var d = await r.json();
-  var ul = document.getElementById('files');
+  var d = await (await get('/api/files?pfad=' + encodeURIComponent(pfad || ''))).json();
+  var ul = elem('files');
   ul.innerHTML = '';
   (d.dateien || []).forEach(function(n) {
     var li = document.createElement('li');
@@ -211,7 +237,8 @@ async function ladeDateien(pfad) {
     li.setAttribute('data-pfad', (pfad ? pfad + '/' : '') + n);
     ul.appendChild(li);
   });
-  get('/api/info').then(function(r){return r.json();}).then(function(i){ document.getElementById('ws').textContent = i.workspace; });
+  var i = await (await get('/api/info')).json();
+  elem('ws').textContent = i.workspace;
 }
 
 function pufferSichern() { if (aktuellerPfad !== null) { puffer[aktuellerPfad] = editor.getValue(); } }
@@ -220,20 +247,19 @@ async function oeffnen(pfad) {
   pufferSichern();
   if (!offeneTabs.some(function(t){ return t.pfad === pfad; })) { offeneTabs.push({ pfad: pfad }); }
   if (puffer[pfad] === undefined) {
-    var r = await get('/api/datei?pfad=' + encodeURIComponent(pfad));
-    var d = await r.json();
-    if (d.code === undefined) { document.getElementById('fname').textContent = 'nicht lesbar'; return; }
+    var d = await (await get('/api/datei?pfad=' + encodeURIComponent(pfad))).json();
+    if (d.code === undefined) { elem('fname').textContent = 'nicht lesbar'; return; }
     puffer[pfad] = d.code;
   }
   aktuellerPfad = pfad;
   editor.setValue(puffer[pfad], -1);
-  document.getElementById('fname').textContent = pfad;
+  elem('fname').textContent = pfad;
   tabAnzeigen();
   zeigeCursor();
 }
 
 function tabAnzeigen() {
-  var el = document.getElementById('tabs');
+  var el = elem('tabs');
   el.innerHTML = '';
   offeneTabs.forEach(function(t) {
     var span = document.createElement('span');
@@ -268,19 +294,20 @@ async function speichern() {
     aktuellerPfad = name;
     if (!offeneTabs.some(function(t){ return t.pfad === name; })) { offeneTabs.push({ pfad: name }); }
   }
-  var r = await post('/api/datei', { pfad: aktuellerPfad, code: editor.getValue() });
-  var d = await r.json();
+  var d = await (await post('/api/datei', { pfad: aktuellerPfad, code: editor.getValue() })).json();
   puffer[aktuellerPfad] = editor.getValue();
-  document.getElementById('fname').textContent = d.gespeichert ? ('gespeichert: ' + aktuellerPfad) : ('Fehler: ' + (d.error || '?'));
+  elem('fname').textContent = d.gespeichert ? ('gespeichert: ' + aktuellerPfad) : ('Fehler: ' + (d.error || '?'));
   tabAnzeigen();
   ladeDateien('');
+  gitLaden();
 }
 
 function appendChunk(kind, text) {
-  var out = document.getElementById('out');
+  var out = elem('out');
   var span = document.createElement('span');
   if (kind === 'err') { span.className = 'err'; }
   else if (kind === 'sys') { span.className = 'sys'; }
+  else if (kind === 'dim') { span.className = 'dim'; }
   span.textContent = text;
   out.appendChild(span);
   if (out.childElementCount > outMax) {
@@ -295,72 +322,176 @@ function appendChunk(kind, text) {
 
 function renderExplanation(ex) {
   if (!ex || !ex.erklaerung) { return; }
-  var out = document.getElementById('out');
   var h = '<span class="explain">' + nl();
   h += '<span class="eh">' + esc(ex.type || '') + (ex.line ? ' (Zeile ' + ex.line + ')' : '') + '</span>' + nl();
   if (ex.message) { h += '<span class="em">' + esc(ex.message) + '</span>' + nl(); }
-  if (ex.code) {
-    h += nl + '<span class="ec">  ' + esc(ex.code) + '</span>' + nl;
-  }
-  h += nl + '<span class="ec">' + esc(ex.erklaerung) + '</span>' + nl;
+  if (ex.code) { h += '<span class="ec">  ' + esc(ex.code) + '</span>' + nl(); }
+  h += nl() + '<span class="ec">' + esc(ex.erklaerung) + '</span>' + nl();
   if (ex.tipps && ex.tipps.length) {
-    h += nl + '<span class="el">Was du machen kannst:</span>' + nl;
-    ex.tipps.forEach(function(t){ h += '<span class="ec">  - ' + esc(t) + '</span>' + nl; });
+    h += nl() + '<span class="el">Was du machen kannst:</span>' + nl();
+    ex.tipps.forEach(function(t){ h += '<span class="ec">  - ' + esc(t) + '</span>' + nl(); });
   }
-  h += '</span>' + nl;
-  out.insertAdjacentHTML('beforeend', h);
+  h += '</span>' + nl();
+  elem('out').insertAdjacentHTML('beforeend', h);
 }
 
 function renderVariablen(liste) {
   if (!liste || !liste.length) { return; }
-  var out = document.getElementById('out');
-  var h = '<span class="vars">' + nl + '<span class="vh">Deine Variablen am Ende:</span>' + nl;
-  liste.forEach(function(v){ h += '<span class="vt">  ' + esc(v[0]) + ' = ' + esc(v[2]) + '   (' + esc(v[1]) + ')</span>' + nl; });
-  h += '</span>' + nl;
-  out.insertAdjacentHTML('beforeend', h);
+  var h = '<span class="vars">' + nl() + '<span class="vh">Deine Variablen am Ende:</span>' + nl();
+  liste.forEach(function(v){ h += '<span class="vt">  ' + esc(v[0]) + ' = ' + esc(v[2]) + '   (' + esc(v[1]) + ')</span>' + nl(); });
+  h += '</span>' + nl();
+  elem('out').insertAdjacentHTML('beforeend', h);
 }
 
 function applyWarnings(list) {
   editor.session.setAnnotations([]);
   if (!list || !list.length) { return; }
-  var ann = [];
-  list.forEach(function(w){
-    var row = Math.max(0, Math.min(w.line - 1, editor.session.getLength() - 1));
-    ann.push({ row: row, column: w.col || 0, text: w.text, type: 'warning' });
-  });
-  editor.session.setAnnotations(ann);
-  var out = document.getElementById('out');
-  var h = '<span class="sys">' + list.length + ' Hinweis(e):</span>' + nl;
-  list.forEach(function(w){ h += '<span class="dim">  Zeile ' + w.line + ': ' + esc(w.text) + '</span>' + nl; });
-  out.insertAdjacentHTML('afterbegin', h);
+  editor.session.setAnnotations(list.map(function(w){
+    return { row: Math.max(0, Math.min(w.line - 1, editor.session.getLength() - 1)), column: w.col || 0, text: w.text, type: 'warning' };
+  }));
+  var h = '<span class="sys">' + list.length + ' Hinweis(e):</span>' + nl();
+  list.forEach(function(w){ h += '<span class="dim">  Zeile ' + w.line + ': ' + esc(w.text) + '</span>' + nl(); });
+  elem('out').insertAdjacentHTML('afterbegin', h);
+}
+
+function steuerungBusy(an) {
+  elem('btnRun').disabled = an;
+  elem('btnStop').disabled = !an;
+  elem('live').disabled = !an;
 }
 
 async function ausfuehren() {
-  var out = document.getElementById('out');
-  out.innerHTML = '';
-  document.getElementById('status').textContent = 'laeuft ...';
-  var code = editor.getValue();
+  if (laufId) { return; }
+  elem('out').innerHTML = '';
+  elem('status').textContent = 'laeuft ...';
   try {
-    var c = await post('/api/check', { code: code });
-    var cd = await c.json();
+    var cd = await (await post('/api/check', { code: editor.getValue() })).json();
     applyWarnings(cd.warnings || []);
   } catch (e) { }
-  var t0 = Date.now();
-  var r = await post('/api/run', { code: code, stdin: document.getElementById('stdin').value });
-  var d = await r.json();
-  if (d.stdout) { appendChunk('out', d.stdout); }
-  if (d.stderr) { appendChunk('err', d.stderr); }
-  if (!d.stdout && !d.stderr) { appendChunk('dim', '(keine Ausgabe)' + nl()); }
+  var d = await (await post('/api/run/start', { code: editor.getValue(), stdin: elem('stdin').value })).json();
+  if (!d.id) { appendChunk('err', 'Start fehlgeschlagen: ' + (d.error || '')); return; }
+  laufId = d.id;
+  laufFrom = 0;
+  steuerungBusy(true);
+  laufTimer = setInterval(laufPruefen, 150);
+}
+
+async function laufPruefen() {
+  if (!laufId) { return; }
+  var d = await (await post('/api/run/poll', { id: laufId, from: laufFrom })).json();
+  if (d.error) { return; }
+  (d.chunks || []).forEach(function(c){ appendChunk(c.t === 'err' ? 'err' : 'out', c.s); });
+  laufFrom = d.next;
+  if (d.done) { laufEnde(d); }
+}
+
+function laufEnde(d) {
+  clearInterval(laufTimer); laufTimer = null;
   renderExplanation(d.explanation);
   renderVariablen(d.vars);
   appendChunk('dim', nl() + '[fertig - Exit ' + d.returncode + ', ' + d.ms + ' ms]' + nl());
-  document.getElementById('status').textContent = 'Exit ' + d.returncode + ' \u00b7 ' + d.ms + ' ms';
+  elem('status').textContent = 'Exit ' + d.returncode + ' \u00b7 ' + d.ms + ' ms';
+  laufId = null;
+  steuerungBusy(false);
+}
+
+function sendLine() {
+  if (!laufId) { return; }
+  var el = elem('live');
+  var text = el.value;
+  el.value = '';
+  appendChunk('dim', '> ' + text + nl());
+  post('/api/run/input', { id: laufId, text: text }).catch(function(){});
+}
+
+function stopRun() {
+  if (laufId) { post('/api/run/stop', { id: laufId }).catch(function(){}); }
+}
+
+async function debugStart() {
+  if (debugId || laufId) { return; }
+  elem('out').innerHTML = '';
+  elem('dbgPanel').hidden = false;
+  elem('dbgZeile').textContent = 'startet ...';
+  elem('dbgVars').textContent = '';
+  var d = await (await post('/api/debug/start', { code: editor.getValue() })).json();
+  if (!d.id) { elem('dbgZeile').textContent = 'Start fehlgeschlagen'; return; }
+  debugId = d.id;
+  debugFrom = 0;
+  elem('live').disabled = false;
+  debugTimer = setInterval(debugPruefen, 200);
+}
+
+async function debugPruefen() {
+  if (!debugId) { return; }
+  var d = await (await post('/api/debug/poll', { id: debugId, from: debugFrom })).json();
+  if (d.error) { return; }
+  (d.chunks || []).forEach(function(c){ appendChunk(c.t === 'err' ? 'err' : 'out', c.s); });
+  debugFrom = d.next;
+  if (d.zeile) {
+    elem('dbgZeile').textContent = 'Zeile ' + d.zeile;
+    if (debugMarker !== null) { editor.session.removeMarker(debugMarker); }
+    debugMarker = editor.session.addMarker(new AceRange(d.zeile - 1, 0, d.zeile - 1, Infinity), 'pypad-debug', 'fullLine');
+    editor.scrollToLine(d.zeile - 1, true, true, function(){});
+  } else if (!d.done) {
+    elem('dbgZeile').textContent = 'bereit';
+  }
+  elem('dbgVars').textContent = (d.variablen || []).map(function(v){ return v[0] + ' = ' + v[2]; }).join('   ');
+  if (d.done) { debugEnde(d); }
+}
+
+function debugEnde(d) {
+  clearInterval(debugTimer); debugTimer = null;
+  if (debugMarker !== null) { editor.session.removeMarker(debugMarker); debugMarker = null; }
+  debugId = null;
+  elem('dbgZeile').textContent = 'fertig (Exit ' + d.returncode + ')';
+  elem('live').disabled = true;
+  appendChunk('dim', nl() + '[Debug beendet - Exit ' + d.returncode + ', ' + d.ms + ' ms]' + nl());
+}
+
+function debugBefehl(was) { if (debugId) { post('/api/debug/befehl', { id: debugId, befehl: was }).catch(function(){}); } }
+
+async function gitLaden() {
+  try {
+    var d = await (await get('/api/git')).json();
+    if (d.branch && d.branch.error) { elem('gitBranch').textContent = 'kein Repo'; elem('gitStatus').innerHTML = ''; return; }
+    elem('gitBranch').textContent = (d.branch && d.branch.ausgabe || '').trim();
+    var el = elem('gitStatus');
+    el.innerHTML = '';
+    var zeilen = ((d.status && d.status.ausgabe) || '').split(String.fromCharCode(10)).filter(Boolean);
+    if (!zeilen.length) {
+      var l = document.createElement('div');
+      l.className = 'z hint';
+      l.textContent = 'sauber';
+      el.appendChild(l);
+    }
+    zeilen.forEach(function(z){
+      var div = document.createElement('div');
+      div.className = 'z';
+      div.textContent = z;
+      div.setAttribute('data-diff', z.slice(3).trim());
+      el.appendChild(div);
+    });
+  } catch (e) { }
+}
+
+async function gitDiff(datei) {
+  var d = await (await get('/api/git-diff?datei=' + encodeURIComponent(datei))).json();
+  var h = '<span class="explain"><span class="eh">Diff: ' + esc(datei) + '</span>' + nl() + esc(d.diff || '') + nl() + '</span>' + nl();
+  elem('out').insertAdjacentHTML('beforeend', h);
+}
+
+async function gitBefehl(was) {
+  var d = await (await post('/api/git-' + was, { message: elem('gitMsg').value })).json();
+  var txt = ((d.ausgabe || '') + (d.fehler || '') + (d.error || '')).trim();
+  elem('status').textContent = was + ': ' + (txt.slice(0, 60) || 'ok');
+  elem('gitMsg').value = '';
+  gitLaden();
 }
 
 async function ladeNutzer() {
-  var r = await get('/api/users');
-  var d = await r.json();
-  var el = document.getElementById('uListe');
+  var d = await (await get('/api/users')).json();
+  var el = elem('uListe');
   el.innerHTML = '';
   (d.users || []).forEach(function(u) {
     var span = document.createElement('span');
@@ -371,40 +502,50 @@ async function ladeNutzer() {
 }
 
 async function nutzerSpeichern() {
-  var r = await post('/api/user', { name: document.getElementById('uName').value.trim(),
-    pass: document.getElementById('uPass').value, admin: document.getElementById('uAdmin').checked });
-  var d = await r.json();
-  if (d.ok) { document.getElementById('uName').value = ''; document.getElementById('uPass').value = ''; ladeNutzer(); }
+  var d = await (await post('/api/user', { name: elem('uName').value.trim(), pass: elem('uPass').value, admin: elem('uAdmin').checked })).json();
+  if (d.ok) { elem('uName').value = ''; elem('uPass').value = ''; ladeNutzer(); }
   else { alert(d.error || 'Fehler'); }
 }
 
-document.getElementById('lb').addEventListener('click', anmelden);
-document.getElementById('lp').addEventListener('keydown', function(e){ if (e.key === 'Enter') { anmelden(); } });
-document.getElementById('btnLogout').addEventListener('click', function(){ post('/api/logout').then(function(){ location.reload(); }); });
-document.getElementById('btnSave').addEventListener('click', speichern);
-document.getElementById('btnRun').addEventListener('click', ausfuehren);
-document.getElementById('btnUsers').addEventListener('click', function(){ var p = document.getElementById('usersPanel'); p.hidden = !p.hidden; });
-document.getElementById('btnSet').addEventListener('click', function(){ var p = document.getElementById('setPanel'); p.hidden = !p.hidden; });
-document.getElementById('btnTheme').addEventListener('click', function(){
+elem('lb').addEventListener('click', anmelden);
+elem('lp').addEventListener('keydown', function(e){ if (e.key === 'Enter') { anmelden(); } });
+elem('btnLogout').addEventListener('click', function(){ post('/api/logout').then(function(){ location.reload(); }); });
+elem('btnSave').addEventListener('click', speichern);
+elem('btnRun').addEventListener('click', ausfuehren);
+elem('btnStop').addEventListener('click', stopRun);
+elem('live').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); sendLine(); } });
+elem('btnDebug').addEventListener('click', debugStart);
+elem('btnSchritt').addEventListener('click', function(){ debugBefehl('step'); });
+elem('btnWeiter').addEventListener('click', function(){ debugBefehl('run'); });
+elem('btnDbgStop').addEventListener('click', function(){ debugBefehl('stop'); });
+elem('btnGitLaden').addEventListener('click', gitLaden);
+elem('btnGitCommit').addEventListener('click', function(){ gitBefehl('commit'); });
+elem('btnGitPush').addEventListener('click', function(){ gitBefehl('push'); });
+elem('btnGitPull').addEventListener('click', function(){ gitBefehl('pull'); });
+elem('gitStatus').addEventListener('click', function(e){
+  if (e.target.getAttribute && e.target.getAttribute('data-diff')) { gitDiff(e.target.getAttribute('data-diff')); }
+});
+elem('btnUsers').addEventListener('click', function(){ var p = elem('usersPanel'); p.hidden = !p.hidden; });
+elem('btnSet').addEventListener('click', function(){ var p = elem('setPanel'); p.hidden = !p.hidden; });
+elem('btnTheme').addEventListener('click', function(){
   var jetzt = localStorage.getItem('pypad_theme') || 'ace/theme/tomorrow_night';
   var neu = (jetzt === 'ace/theme/tomorrow_night') ? 'ace/theme/tomorrow' : 'ace/theme/tomorrow_night';
-  localStorage.setItem('pypad_theme', neu); editor.setTheme(neu);
+  localStorage.setItem('pypad_theme', neu);
+  editor.setTheme(neu);
 });
-document.getElementById('btnFS').addEventListener('click', function(){ schrift = Math.min(22, schrift + 1); localStorage.setItem('pypad_schrift', String(schrift)); ladeSchrift(); });
-document.getElementById('btnFK').addEventListener('click', function(){ schrift = Math.max(10, schrift - 1); localStorage.setItem('pypad_schrift', String(schrift)); ladeSchrift(); });
-document.getElementById('uSave').addEventListener('click', nutzerSpeichern);
-document.getElementById('files').addEventListener('click', function(e){ var t = e.target; if (t.getAttribute('data-pfad')) { oeffnen(t.getAttribute('data-pfad')); } });
-document.getElementById('tabs').addEventListener('click', function(e){
+elem('btnFS').addEventListener('click', function(){ schrift = Math.min(22, schrift + 1); localStorage.setItem('pypad_schrift', String(schrift)); ladeSchrift(); });
+elem('btnFK').addEventListener('click', function(){ schrift = Math.max(10, schrift - 1); localStorage.setItem('pypad_schrift', String(schrift)); ladeSchrift(); });
+elem('uSave').addEventListener('click', nutzerSpeichern);
+elem('files').addEventListener('click', function(e){ if (e.target.getAttribute && e.target.getAttribute('data-pfad')) { oeffnen(e.target.getAttribute('data-pfad')); } });
+elem('tabs').addEventListener('click', function(e){
   var t = e.target;
   if (t.getAttribute && t.getAttribute('data-zu')) { tabZu(t.getAttribute('data-zu')); return; }
   if (t.getAttribute && t.getAttribute('data-oeffne')) { oeffnen(t.getAttribute('data-oeffne')); }
 });
-document.getElementById('uListe').addEventListener('click', function(e){
+elem('uListe').addEventListener('click', function(e){
   var t = e.target;
-  if (t.getAttribute && t.getAttribute('data-del')) {
-    if (confirm('Benutzer ' + t.getAttribute('data-del') + ' loeschen?')) {
-      post('/api/user-delete', { name: t.getAttribute('data-del') }).then(function(){ ladeNutzer(); });
-    }
+  if (t.getAttribute && t.getAttribute('data-del') && confirm('Benutzer ' + t.getAttribute('data-del') + ' loeschen?')) {
+    post('/api/user-delete', { name: t.getAttribute('data-del') }).then(function(){ ladeNutzer(); });
   }
 });
 boot();

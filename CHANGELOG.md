@@ -1,5 +1,14 @@
 # Änderungen
 
+## 1.5.0 - 2026-10-16
+
+**Online-Variante: Debugger, Git und Live-Eingabe - plus Layout-Fix**
+- Debugger: Programm im Einzelschritt (Schritt / Weiter / Ende), aktuelle Zeile hervorgehoben, Variablen sichtbar
+- Git-Panel im Online-Editor: Branch, geaenderte Dateien, Diff per Klick, Commit, Push, Pull
+- Live-Eingabe: input() kann waehrend des Laufs beantwortet werden (Eingabezeile unten)
+- Bugfix: Oberflaeche fuellte das Fenster nicht - Editor und Ausgabe waren abgeschnitten
+- Bugfix: an einigen Stellen stand der Quelltext der Hilfsfunktion statt eines Zeilenumbruchs in der Ausgabe
+
 ## 1.4.0 - 2026-10-16
 
 **Online-Variante: gleiche Funktionen wie offline**

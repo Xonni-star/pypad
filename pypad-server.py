@@ -236,6 +236,33 @@ def complete_words(code, prefix):
     return [w for w in basis if w.lower().startswith(low)]
 
 
+LAEUFE = {}
+LAEUFE_LOCK = threading.Lock()
+SANDBOX = ["sudo", "-n", WRAPPER]
+
+
+def neuer_lauf(code, stdin_text):
+    lauf = pypad.Run(code, stdin_text, basis=SANDBOX, tmp_parent=RUN_DIR, cwd=RUN_DIR)
+    with LAEUFE_LOCK:
+        LAEUFE[lauf.id] = lauf
+        if len(LAEUFE) > 40:
+            for k in list(LAEUFE)[:-20]:
+                alt = LAEUFE.pop(k, None)
+                if alt is not None:
+                    try:
+                        alt.tmp.cleanup()
+                    except Exception:
+                        pass
+    return lauf
+
+
+def neuer_debug(code):
+    lauf = pypad.DebugRun(code, basis=SANDBOX, tmp_parent=RUN_DIR, cwd=RUN_DIR)
+    with LAEUFE_LOCK:
+        LAEUFE[lauf.id] = lauf
+    return lauf
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "PyPadServer/1.0"
     protocol_version = "HTTP/1.1"
@@ -330,6 +357,27 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json({"users": [{"name": n, "admin": bool(v.get("admin"))}
                                   for n, v in users_load().items()]})
+            return
+        if pfad == "/api/git":
+            if pypad is None:
+                self._json({"error": "Git nicht verfuegbar"}, 500)
+                return
+            ws = str(workspace(user))
+            self._json({"pfad": ws,
+                        "branch": pypad.git_ausfuehren(ws, "rev-parse", "--abbrev-ref", "HEAD"),
+                        "status": pypad.git_ausfuehren(ws, "status", "--short"),
+                        "log": pypad.git_ausfuehren(ws, "log", "--oneline", "-6")})
+            return
+        if pfad == "/api/git-diff":
+            if pypad is None:
+                self._json({"error": "Git nicht verfuegbar"}, 500)
+                return
+            datei = (parse_qs(url.query).get("datei") or [""])[0]
+            ws = str(workspace(user))
+            a = pypad.git_ausfuehren(ws, "diff", "--", datei)
+            b = pypad.git_ausfuehren(ws, "diff", "--cached", "--", datei)
+            diff = (a.get("ausgabe", "") + b.get("ausgabe", "")).strip()
+            self._json({"diff": diff or "(keine Aenderungen an dieser Datei)"})
             return
         if pfad == "/api/files":
             q = parse_qs(url.query)
@@ -445,6 +493,75 @@ class Handler(BaseHTTPRequestHandler):
             ziel.parent.mkdir(parents=True, exist_ok=True)
             ziel.write_text(code, encoding="utf-8")
             self._json({"gespeichert": str(ziel)})
+            return
+
+        if pfad in ("/api/run/start", "/api/debug/start"):
+            code = daten.get("code") or ""
+            if not code.strip():
+                self._json({"error": "leerer Code"}, 400)
+                return
+            if pypad is None:
+                self._json({"error": "Runner nicht verfuegbar"}, 500)
+                return
+            lauf = neuer_lauf(code, daten.get("stdin") or "") if pfad == "/api/run/start" else neuer_debug(code)
+            self._json({"id": lauf.id})
+            return
+
+        if pfad in ("/api/run/poll", "/api/debug/poll"):
+            lauf = LAEUFE.get((daten.get("id") or "").strip())
+            if not lauf:
+                self._json({"error": "unbekannte Lauf-ID"}, 404)
+                return
+            try:
+                ab = int(daten.get("from") or 0)
+            except (TypeError, ValueError):
+                ab = 0
+            if pfad == "/api/run/poll":
+                self._json(lauf.snapshot(max(0, ab)))
+            else:
+                self._json(lauf.zustand(max(0, ab)))
+            return
+
+        if pfad in ("/api/run/input", "/api/debug/befehl"):
+            lauf = LAEUFE.get((daten.get("id") or "").strip())
+            if not lauf:
+                self._json({"error": "unbekannte Lauf-ID"}, 404)
+                return
+            if pfad == "/api/run/input":
+                self._json({"ok": lauf.write(str(daten.get("text") or "") + "\n")})
+            else:
+                befehl = str(daten.get("befehl") or "")
+                if befehl == "stop":
+                    lauf.kill()
+                    self._json({"ok": True, "gestoppt": True})
+                else:
+                    self._json({"ok": lauf.befehl(befehl)})
+            return
+
+        if pfad == "/api/run/stop":
+            lauf = LAEUFE.get((daten.get("id") or "").strip())
+            if not lauf:
+                self._json({"error": "unbekannte Lauf-ID"}, 404)
+                return
+            lauf.kill()
+            self._json({"gestoppt": True})
+            return
+
+        if pfad in ("/api/git-commit", "/api/git-push", "/api/git-pull"):
+            if pypad is None:
+                self._json({"error": "Git nicht verfuegbar"}, 500)
+                return
+            ws = str(workspace(user))
+            if pfad == "/api/git-commit":
+                meldung = (daten.get("message") or "").strip() or "Update"
+                pypad.git_ausfuehren(ws, "add", "-A")
+                c = pypad.git_ausfuehren(ws, "-c", "user.name=" + user, "-c", "user.email=" + user + "@pypad.local",
+                                         "commit", "-m", meldung)
+                self._json({"ok": c.get("rc") == 0, "ausgabe": c.get("ausgabe", ""), "fehler": c.get("fehler", "")})
+            elif pfad == "/api/git-push":
+                self._json(pypad.git_ausfuehren(ws, "push"))
+            else:
+                self._json(pypad.git_ausfuehren(ws, "pull"))
             return
 
         if pfad == "/api/run":

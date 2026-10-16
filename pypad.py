@@ -859,7 +859,7 @@ def lint_code(code):
 class Run:
     """Ein laufendes Programm: Ausgabe wird gestreamt, Eingaben kommen live rein."""
 
-    def __init__(self, code, prefill):
+    def __init__(self, code, prefill, basis=None, tmp_parent=None, cwd=None):
         self.id = uuid.uuid4().hex[:12]
         self.chunks = []
         self.lock = threading.Lock()
@@ -869,12 +869,23 @@ class Run:
         self.explain = None
         self.started = time.time()
         self.killed_by_timeout = False
-        self.tmp = tempfile.TemporaryDirectory(prefix="pypad-")
+        self.tmp = tempfile.TemporaryDirectory(prefix="pypad-", dir=(str(tmp_parent) if tmp_parent else None))
+        if tmp_parent:
+            try:
+                os.chmod(self.tmp.name, 0o777)
+            except OSError:
+                pass
         script = Path(self.tmp.name) / "main.py"
         script.write_text(code, encoding="utf-8")
         runner = Path(self.tmp.name) / "_pypad_runner.py"
         runner.write_text(RUNNER_SOURCE, encoding="utf-8")
         self.vars_path = Path(self.tmp.name) / "_pypad_vars.json"
+        if tmp_parent:
+            for _p in (script, runner):
+                try:
+                    os.chmod(_p, 0o644)
+                except OSError:
+                    pass
         env = dict(os.environ)
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -885,12 +896,13 @@ class Run:
             start_kwargs["start_new_session"] = True   # eigene Prozessgruppe (killpg)
         else:
             start_kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        _befehl = (basis or [PYTHON, "-u"]) + [str(runner), str(script), str(self.vars_path)]
         self.proc = subprocess.Popen(
-            [PYTHON, "-u", str(runner), str(script), str(self.vars_path)],
+            _befehl,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=str(WORKDIR),
+            cwd=(str(cwd) if cwd else str(WORKDIR)),
             env=env,
             **start_kwargs,
         )
@@ -987,7 +999,7 @@ class Run:
 class DebugRun:
     """Ein Programm im Einzelschritt-Modus."""
 
-    def __init__(self, code):
+    def __init__(self, code, basis=None, tmp_parent=None, cwd=None):
         self.id = uuid.uuid4().hex[:12]
         self.chunks = []
         self.lock = threading.Lock()
@@ -995,8 +1007,13 @@ class DebugRun:
         self.returncode = None
         self.started = time.time()
         self.code = code
-        self.tmp = tempfile.TemporaryDirectory(prefix="pypad-dbg-")
+        self.tmp = tempfile.TemporaryDirectory(prefix="pypad-dbg-", dir=(str(tmp_parent) if tmp_parent else None))
         base = Path(self.tmp.name)
+        if tmp_parent:
+            try:
+                os.chmod(base, 0o777)
+            except OSError:
+                pass
         script = base / "main.py"
         script.write_text(code, encoding="utf-8")
         runner = base / "_pypad_debug.py"
@@ -1013,12 +1030,13 @@ class DebugRun:
             kwargs["start_new_session"] = True
         else:
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        _befehl = (basis or [PYTHON, "-u"]) + [str(runner), str(script), str(base)]
         self.proc = subprocess.Popen(
-            [PYTHON, "-u", str(runner), str(script), str(base)],
+            _befehl,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=str(WORKDIR),
+            cwd=(str(cwd) if cwd else str(WORKDIR)),
             env=env,
             **kwargs,
         )
