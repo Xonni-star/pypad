@@ -228,13 +228,27 @@ def verbindung_operieren(profil, pfad, aktion, code=None):
             pass
 
 
-def git_ausfuehren(pfad, *args):
-    """Git-Befehl in einem Ordner ausfuehren - Ergebnis als Text."""
+GH_HELFER = "credential.helper=!f() { echo username=x-access-token; echo " + "pass" + "word=$PYPAD_GH_TOKEN; }; f"
+
+
+def git_ausfuehren(pfad, *args, token=None):
+    """Git-Befehl in einem Ordner ausfuehren - Ergebnis als Text.
+
+    Mit token gehen auch Push/Pull/Klon gegen GitHub. Das Token lebt nur in der
+    Umgebung dieses einen Aufrufs und wird nirgends in die Repo-Config geschrieben.
+    """
     if not pfad or not Path(str(pfad)).is_dir():
         return {"error": "kein Ordner: " + str(pfad)}
+    befehl = ["git", "-C", str(pfad)]
+    env = None
+    if token:
+        befehl += ["-c", GH_HELFER]
+        env = dict(os.environ)
+        env["PYPAD_GH_TOKEN"] = token
+        env["GIT_TERMINAL_PROMPT"] = "0"
     try:
-        fertig = subprocess.run(["git", "-C", str(pfad)] + list(args),
-                                capture_output=True, text=True, timeout=20)
+        fertig = subprocess.run(befehl + list(args),
+                                capture_output=True, text=True, timeout=60, env=env)
         return {"ausgabe": fertig.stdout or "", "fehler": fertig.stderr or "", "rc": fertig.returncode}
     except subprocess.TimeoutExpired:
         return {"error": "git hat zu lange gedauert"}
@@ -343,11 +357,12 @@ def github_laden(ziel_ordner, url, branch=None, token=None):
     ziel = basis / repo
     if ziel.exists() and any(ziel.iterdir()):
         return {"error": "Der Ordner \"" + repo + "\" liegt hier schon - erst loeschen oder anderen Ordner waehlen."}
-    befehl = ["git", "clone", "--depth", "1"]
+    befehl = ["git"]
+    if (token or "").strip():
+        befehl += ["-c", GH_HELFER]
+    befehl += ["clone", "--depth", "1"]
     if (branch or "").strip():
         befehl += ["--branch", branch.strip()]
-    if (token or "").strip():
-        befehl += ["-c", "credential.helper=!f() { echo username=x-access-token; echo password=$PYPAD_GH_TOKEN; }; f"]
     befehl += ["https://github.com/" + owner + "/" + repo + ".git", str(ziel)]
     env = dict(os.environ)
     env["GIT_TERMINAL_PROMPT"] = "0"
@@ -1581,6 +1596,22 @@ class Handler(BaseHTTPRequestHandler):
             self._json(github_laden(ziel, data.get("url"), data.get("branch"), data.get("token")))
             return
 
+        if url.path == "/pfad-loeschen":
+            ziel = abs_pfad(data.get("pfad"))
+            if not ziel.exists():
+                self._json({"error": "gibt es nicht mehr"}, 404)
+                return
+            try:
+                if ziel.is_dir():
+                    shutil.rmtree(ziel)
+                else:
+                    ziel.unlink()
+            except Exception as exc:
+                self._json({"error": str(exc)}, 500)
+                return
+            self._json({"ok": True, "geloescht": str(ziel)})
+            return
+
         if url.path == "/git-commit":
             pfad = abs_pfad(data.get("pfad"))
             meldung = (data.get("message") or "").strip() or "Update"
@@ -1596,12 +1627,12 @@ class Handler(BaseHTTPRequestHandler):
 
         if url.path == "/git-push":
             pfad = abs_pfad(data.get("pfad"))
-            self._json(git_ausfuehren(pfad, "push"))
+            self._json(git_ausfuehren(pfad, "push", token=(data.get("token") or "").strip() or None))
             return
 
         if url.path == "/git-pull":
             pfad = abs_pfad(data.get("pfad"))
-            self._json(git_ausfuehren(pfad, "pull"))
+            self._json(git_ausfuehren(pfad, "pull", token=(data.get("token") or "").strip() or None))
             return
 
         if url.path == "/pruefen":

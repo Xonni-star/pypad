@@ -44,7 +44,10 @@ main{flex:1;display:flex;flex-direction:row;min-height:0}
 .verbindung-form{display:flex;flex-direction:column;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
 .verbindung-form input,.verbindung-form select{background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;outline:none}
 #dateiListe{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
-#dateiListe li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dateiListe li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:space-between;gap:6px}
+#dateiListe li .t{overflow:hidden;text-overflow:ellipsis}
+#dateiListe li .x{color:var(--dim);flex-shrink:0;font-size:11px}
+#dateiListe li .x:hover{color:var(--err);font-weight:700}
 #dateiListe li:hover{background:#1b2338}
 #dateiListe li.ordner{color:#ffd479}
 .git-panel{border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
@@ -222,6 +225,10 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
       <div class="git-commit">
         <input id="gitUrl" placeholder="GitHub: user/repo">
         <button id="btnGitLaden" title="Repo von GitHub klonen">Laden</button>
+      </div>
+      <div class="git-commit">
+        <input id="gitToken" type="password" placeholder="GitHub-Token (Push/Pull)">
+        <button id="btnGitToken" title="Token nur lokal merken">Anmelden</button>
       </div>
       <div class="git-actions">
         <button id="btnGitPush">Push</button>
@@ -1466,7 +1473,7 @@ function gitBefehl(was) {
   fetch('/git-' + was, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pfad: pfad, message: meldung })
+    body: JSON.stringify({ pfad: pfad, message: meldung, token: localStorage.getItem('pypad_ghtoken') || '' })
   }).then(function (r) { return r.json(); }).then(function (d) {
     var ausgabe = ((d.ausgabe || '') + (d.fehler || '') + (d.error || '')).trim();
     footHint.textContent = was + ': ' + (ausgabe.slice(0, 70) || (d.ok ? 'ok' : 'fertig'));
@@ -1482,7 +1489,7 @@ function gitVonGithubLaden() {
   document.getElementById('gitBranch').textContent = 'lade ' + url + ' ...';
   footHint.textContent = 'lade ' + url + ' ...';
   fetch('/git-laden', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pfad: ziel, url: url }) })
+    body: JSON.stringify({ pfad: ziel, url: url, token: localStorage.getItem('pypad_ghtoken') || '' }) })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d.ok) {
@@ -1498,8 +1505,32 @@ function gitVonGithubLaden() {
     .catch(function () { footHint.textContent = 'keine Verbindung zum PyPad-Server'; });
 }
 
+function pfadLoeschen(pfad) {
+  fetch('/pfad-loeschen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      footHint.textContent = d.ok ? ('geloescht: ' + pfad) : ('Loeschen fehlgeschlagen: ' + String(d.error || '?').slice(0, 90));
+      ordnerLaden();
+    })
+    .catch(function () { footHint.textContent = 'keine Verbindung'; });
+}
+
+function gitTokenAnzeigen() {
+  var t = localStorage.getItem('pypad_ghtoken');
+  document.getElementById('gitToken').placeholder = t ? 'GitHub-Token gemerkt (leer = entfernen)' : 'GitHub-Token (Push/Pull)';
+}
+
+function gitTokenMerken() {
+  var t = document.getElementById('gitToken').value.trim();
+  if (t) { localStorage.setItem('pypad_ghtoken', t); footHint.textContent = 'GitHub-Token gemerkt (bleibt nur auf diesem Rechner)'; }
+  else { localStorage.removeItem('pypad_ghtoken'); footHint.textContent = 'GitHub-Token entfernt'; }
+  document.getElementById('gitToken').value = '';
+  gitTokenAnzeigen();
+}
+
 function ordnerLaden() {
   var name = verbindungAktuell();
+  var ordnerHatVerbindung = !!name;
   var eingabe = document.getElementById('ordnerInput');
   var pfad = eingabe.value.trim() || '';
   var url = name
@@ -1516,16 +1547,36 @@ function ordnerLaden() {
         (d.ordner || []).forEach(function (o) {
           var oli = document.createElement('li');
           oli.className = 'ordner';
-          oli.textContent = String.fromCharCode(128193) + ' ' + o;
+          var otxt = document.createElement('span');
+          otxt.className = 't';
+          otxt.textContent = String.fromCharCode(128193) + ' ' + o;
+          oli.appendChild(otxt);
           oli.setAttribute('data-ordner', d.pfad + '/' + o);
+          var ox = document.createElement('span');
+          ox.className = 'x';
+          ox.textContent = String.fromCharCode(10005);
+          ox.title = 'Ordner loeschen';
+          ox.setAttribute('data-loeschen', d.pfad + '/' + o);
+          oli.appendChild(ox);
           ul.appendChild(oli);
         });
       }
       (d.dateien || []).forEach(function (name) {
         var li = document.createElement('li');
-        li.textContent = name;
+        var txt = document.createElement('span');
+        txt.className = 't';
+        txt.textContent = name;
+        li.appendChild(txt);
         li.setAttribute('data-pfad', d.pfad + '/' + name);
         li.setAttribute('data-host', name);
+        if (!ordnerHatVerbindung) {
+          var x = document.createElement('span');
+          x.className = 'x';
+          x.textContent = String.fromCharCode(10005);
+          x.title = 'loeschen';
+          x.setAttribute('data-loeschen', d.pfad + '/' + name);
+          li.appendChild(x);
+        }
         ul.appendChild(li);
       });
       if (!d.dateien.length) { footHint.textContent = name ? ('keine Dateien auf ' + name) : 'keine Text-Dateien'; }
@@ -1961,8 +2012,11 @@ document.getElementById('btnOrdnerLaden').addEventListener('click', ordnerLaden)
 document.getElementById('ordnerInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { ordnerLaden(); } });
 document.getElementById('dateiListe').addEventListener('click', function (e) {
   var t = e.target;
-  if (t.getAttribute && t.getAttribute('data-ordner')) { document.getElementById('ordnerInput').value = t.getAttribute('data-ordner'); ordnerLaden(); return; }
-  if (t.getAttribute && t.getAttribute('data-pfad')) { ordnerDateiOeffnen(t.getAttribute('data-pfad'), t.getAttribute('data-host') || ''); }
+  var li = t;
+  while (li && li.tagName !== 'LI') { li = li.parentNode; }
+  if (t.getAttribute && t.getAttribute('data-loeschen') && confirm('Loeschen: ' + t.getAttribute('data-loeschen') + ' ?')) { pfadLoeschen(t.getAttribute('data-loeschen')); return; }
+  if (li && li.getAttribute && li.getAttribute('data-ordner')) { document.getElementById('ordnerInput').value = li.getAttribute('data-ordner'); ordnerLaden(); return; }
+  if (li && li.getAttribute && li.getAttribute('data-pfad')) { ordnerDateiOeffnen(li.getAttribute('data-pfad'), li.getAttribute('data-host') || ''); }
 });
 document.getElementById('tabs').addEventListener('click', function (e) {
   var t = e.target;
@@ -1975,6 +2029,9 @@ document.getElementById('btnVDelete').addEventListener('click', verbindungLoesch
 document.getElementById('btnGitRefresh').addEventListener('click', gitAktualisieren);
 document.getElementById('btnGitCommit').addEventListener('click', function () { gitBefehl('commit'); });
 document.getElementById('btnGitLaden').addEventListener('click', gitVonGithubLaden);
+document.getElementById('btnGitToken').addEventListener('click', gitTokenMerken);
+document.getElementById('gitToken').addEventListener('keydown', function (e) { if (e.key === 'Enter') { gitTokenMerken(); } });
+gitTokenAnzeigen();
 document.getElementById('gitUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { gitVonGithubLaden(); } });
 document.getElementById('btnGitPush').addEventListener('click', function () { gitBefehl('push'); });
 document.getElementById('btnGitPull').addEventListener('click', function () { gitBefehl('pull'); });

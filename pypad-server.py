@@ -103,6 +103,48 @@ def safe_path(name, pfad):
         return None
 
 
+# ---------- GitHub-Token (pro Benutzer) ----------
+def token_datei(name):
+    d = user_dir(name)
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "github.json"
+
+
+def token_status(name):
+    try:
+        d = json.loads(token_datei(name).read_text(encoding="utf-8"))
+        return {"gesetzt": bool(d.get("token")), "login": d.get("login") or ""}
+    except Exception:
+        return {"gesetzt": False, "login": ""}
+
+
+def token_lesen(name):
+    try:
+        return json.loads(token_datei(name).read_text(encoding="utf-8")).get("token") or ""
+    except Exception:
+        return ""
+
+
+def token_speichern(name, token, login):
+    p = token_datei(name)
+    p.write_text(json.dumps({"token": token, "login": login}), encoding="utf-8")
+    os.chmod(p, 0o600)
+
+
+def token_pruefen(token):
+    """Token bei GitHub pruefen -> Loginname, oder None wenn abgelehnt."""
+    try:
+        import urllib.request
+        req = urllib.request.Request("https://api.github.com/user",
+                                     headers={"Authorization": "token " + token,
+                                              "User-Agent": "PyPad",
+                                              "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read().decode()).get("login") or ""
+    except Exception:
+        return None
+
+
 # ---------- Sitzungen ----------
 def sessions_load():
     global SESSIONS
@@ -370,6 +412,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"users": [{"name": n, "admin": bool(v.get("admin"))}
                                   for n, v in users_load().items()]})
             return
+        if pfad == "/api/git-token":
+            self._json(token_status(user))
+            return
         if pfad == "/api/git":
             if pypad is None:
                 self._json({"error": "Git nicht verfuegbar"}, 500)
@@ -575,12 +620,53 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"gestoppt": True})
             return
 
+        if pfad == "/api/git-token":
+            tok = str(daten.get("token") or "").strip()
+            p = token_datei(user)
+            if not tok:
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+                self._json({"ok": True, "gesetzt": False, "login": ""})
+                return
+            login = token_pruefen(tok)
+            if login is None:
+                self._json({"error": "GitHub hat diesen Token nicht akzeptiert (abgelaufen oder falsch?)."})
+                return
+            token_speichern(user, tok, login)
+            self._json({"ok": True, "gesetzt": True, "login": login})
+            return
+
+        if pfad == "/api/loeschen":
+            ziel = safe_path(user, daten.get("pfad"))
+            if ziel is None:
+                self._json({"error": "Pfad nicht erlaubt"}, 400)
+                return
+            try:
+                if ziel.resolve() == workspace(user).resolve():
+                    self._json({"error": "Der Workspace selbst bleibt bestehen."}, 400)
+                    return
+                if not ziel.exists():
+                    self._json({"error": "gibt es nicht mehr"}, 404)
+                    return
+                if ziel.is_dir():
+                    shutil.rmtree(ziel)
+                else:
+                    ziel.unlink()
+            except Exception as exc:
+                self._json({"error": str(exc)}, 500)
+                return
+            self._json({"ok": True, "geloescht": str(ziel)})
+            return
+
         if pfad == "/api/git-laden":
             if pypad is None:
                 self._json({"error": "Git nicht verfuegbar"}, 500)
                 return
             ws = str(workspace(user))
-            self._json(pypad.github_laden(ws, daten.get("url"), daten.get("branch"), daten.get("token")))
+            self._json(pypad.github_laden(ws, daten.get("url"), daten.get("branch"),
+                                          (daten.get("token") or "").strip() or token_lesen(user)))
             return
 
         if pfad in ("/api/git-commit", "/api/git-push", "/api/git-pull"):
@@ -592,6 +678,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "Pfad nicht erlaubt"}, 400)
                 return
             ws = str(ziel)
+            tok = token_lesen(user)
             if pfad == "/api/git-commit":
                 meldung = (daten.get("message") or "").strip() or "Update"
                 pypad.git_ausfuehren(ws, "add", "-A")
@@ -599,9 +686,9 @@ class Handler(BaseHTTPRequestHandler):
                                          "commit", "-m", meldung)
                 self._json({"ok": c.get("rc") == 0, "ausgabe": c.get("ausgabe", ""), "fehler": c.get("fehler", "")})
             elif pfad == "/api/git-push":
-                self._json(pypad.git_ausfuehren(ws, "push"))
+                self._json(pypad.git_ausfuehren(ws, "push", token=tok))
             else:
-                self._json(pypad.git_ausfuehren(ws, "pull"))
+                self._json(pypad.git_ausfuehren(ws, "pull", token=tok))
             return
 
         if pfad == "/api/run":

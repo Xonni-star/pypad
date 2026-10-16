@@ -37,8 +37,12 @@ main{flex:1;display:flex;min-height:0}
 .leiste .df{padding:8px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--line);word-break:break-all}
 #files{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #files li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#files li{display:flex;align-items:center;justify-content:space-between;gap:6px}
 #files li:hover{background:#1b2338}
 #files li.ordner{color:#ffd479}
+#files li .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#files li .x{color:var(--dim);flex-shrink:0;font-size:11px}
+#files li .x:hover{color:var(--err);font-weight:700}
 .git{border-top:1px solid var(--line);display:flex;flex-direction:column;max-height:45%;overflow:auto}
 .gitStatus{overflow:auto}
 .gitStatus .z{padding:3px 8px;font:11px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -115,6 +119,8 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
         <div class="head"><span>Git</span><span id="gitBranch" class="hint"></span><span class="spacer"></span><button id="btnGitRefresh" class="mini" title="aktualisieren">&#8635;</button></div>
         <div class="gitStatus" id="gitStatus"></div>
         <div class="df"><input id="gitUrl" placeholder="GitHub: user/repo"><button id="btnGitLaden" class="mini" title="Repo von GitHub klonen">Laden</button></div>
+        <div class="df" id="gitTokenZeile"><input id="gitToken" type="password" placeholder="GitHub-Token (fuer Push/Pull)"><button id="btnGitToken" class="mini" title="Token speichern">Anmelden</button></div>
+        <div class="df" id="gitTokenInfo" hidden><span class="hint" id="gitTokenWer"></span><span class="spacer"></span><button id="btnGitAbmelden" class="mini">Abmelden</button></div>
         <div class="df"><input id="gitMsg" placeholder="Commit-Nachricht"><button id="btnGitCommit" class="mini">Commit</button></div>
         <div class="df"><button id="btnGitPush" class="mini">Push</button><button id="btnGitPull" class="mini">Pull</button></div>
       </div>
@@ -238,10 +244,35 @@ var aktuellerOrdner = '';
 function eintrag(ul, text, attrs, klasse) {
   var li = document.createElement('li');
   if (klasse) { li.className = klasse; }
-  li.textContent = text;
+  var txt = document.createElement('span');
+  txt.className = 't';
+  txt.textContent = text;
+  li.appendChild(txt);
   Object.keys(attrs).forEach(function(k){ li.setAttribute(k, attrs[k]); });
+  if (attrs['data-pfad']) {
+    var x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = String.fromCharCode(10005);
+    x.title = 'loeschen';
+    x.setAttribute('data-loeschen', attrs['data-pfad']);
+    li.appendChild(x);
+  }
   ul.appendChild(li);
   return li;
+}
+
+function liDaten(el) {
+  while (el && el.tagName !== 'LI') { el = el.parentNode; }
+  return el;
+}
+
+async function loeschen(pfad) {
+  var ordner = aktuellerOrdner;
+  var d = await (await post('/api/loeschen', { pfad: pfad })).json();
+  if (d.ok) { appendChunk('sys', 'geloescht: ' + pfad + nl()); }
+  else { appendChunk('err', 'Loeschen fehlgeschlagen: ' + (d.error || '?') + nl()); }
+  if (ordner && pfad.indexOf(ordner) === 0 && ordner.indexOf(pfad) === 0) { ladeDateien(''); }
+  else { ladeDateien(ordner); }
 }
 
 async function ladeDateien(pfad) {
@@ -268,6 +299,7 @@ async function ladeDateien(pfad) {
   var i = await (await get('/api/info')).json();
   elem('ws').textContent = i.workspace + (pfad ? ' / ' + pfad : '');
   elem('netzLabel').hidden = !i.netz;
+  if (!elem('gitTokenWer').textContent) { gitTokenLaden(); }
   gitLaden();
 }
 
@@ -482,6 +514,26 @@ function debugEnde(d) {
 
 function debugBefehl(was) { if (debugId) { post('/api/debug/befehl', { id: debugId, befehl: was }).catch(function(){}); } }
 
+async function gitTokenLaden() {
+  var d = await (await get('/api/git-token')).json();
+  elem('gitTokenZeile').hidden = !!d.gesetzt;
+  elem('gitTokenInfo').hidden = !d.gesetzt;
+  if (d.gesetzt) { elem('gitTokenWer').textContent = 'GitHub: angemeldet als ' + (d.login || '?'); }
+}
+
+async function gitTokenSetzen() {
+  var t = elem('gitToken').value.trim();
+  appendChunk('sys', t ? 'melde bei GitHub an ...' + nl() : 'melde von GitHub ab ...' + nl());
+  var d = await (await post('/api/git-token', { token: t })).json();
+  if (d.ok) {
+    elem('gitToken').value = '';
+    appendChunk('sys', d.gesetzt ? ('GitHub-Anmeldung ok: ' + d.login + nl()) : ('von GitHub abgemeldet' + nl()));
+    gitTokenLaden();
+  } else {
+    appendChunk('err', (d.error || 'Anmeldung fehlgeschlagen') + nl());
+  }
+}
+
 async function gitLaden() {
   try {
     var d = await (await get('/api/git?pfad=' + encodeURIComponent(aktuellerOrdner))).json();
@@ -569,6 +621,9 @@ elem('btnGitPush').addEventListener('click', function(){ gitBefehl('push'); });
 elem('btnGitPull').addEventListener('click', function(){ gitBefehl('pull'); });
 elem('btnGitLaden').addEventListener('click', gitVonGithubLaden);
 elem('gitUrl').addEventListener('keydown', function(e){ if (e.key === 'Enter') { gitVonGithubLaden(); } });
+elem('btnGitToken').addEventListener('click', gitTokenSetzen);
+elem('gitToken').addEventListener('keydown', function(e){ if (e.key === 'Enter') { gitTokenSetzen(); } });
+elem('btnGitAbmelden').addEventListener('click', gitTokenSetzen);
 elem('gitStatus').addEventListener('click', function(e){
   if (e.target.getAttribute && e.target.getAttribute('data-diff')) { gitDiff(e.target.getAttribute('data-diff')); }
 });
@@ -585,10 +640,14 @@ elem('btnFK').addEventListener('click', function(){ schrift = Math.max(10, schri
 elem('uSave').addEventListener('click', nutzerSpeichern);
 elem('files').addEventListener('click', function(e){
   if (!e.target.getAttribute) { return; }
-  if (e.target.getAttribute('data-hoch') !== null) { ladeDateien(e.target.getAttribute('data-hoch') || ''); return; }
-  var p = e.target.getAttribute('data-pfad');
+  var weg = e.target.getAttribute('data-loeschen');
+  if (weg && confirm('Loeschen: ' + weg + ' ?')) { loeschen(weg); return; }
+  var li = liDaten(e.target);
+  if (!li) { return; }
+  if (li.getAttribute('data-hoch') !== null) { ladeDateien(li.getAttribute('data-hoch') || ''); return; }
+  var p = li.getAttribute('data-pfad');
   if (!p) { return; }
-  if (e.target.getAttribute('data-ordner')) { ladeDateien(p); return; }
+  if (li.getAttribute('data-ordner')) { ladeDateien(p); return; }
   oeffnen(p);
 });
 elem('tabs').addEventListener('click', function(e){

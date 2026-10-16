@@ -1,10 +1,16 @@
 # PyPad
 
-Ein kleiner Python-Editor im Browser, der **komplett offline** auf dem eigenen Mac läuft.
-Kein Internet, kein Konto, keine Cloud: die Oberfläche ist eine lokale Webseite auf `127.0.0.1`,
-ausgeführt wird dein Code mit dem installierten Python.
+Ein Python-Editor im Browser — **zwei Betriebsarten, eine Oberfläche**:
 
-*A tiny offline Python editor for macOS: local browser UI on 127.0.0.1, code runs with your own Python.*
+- **Lokal (Standard):** läuft auf dem eigenen Rechner, die Oberfläche ist eine Webseite auf `127.0.0.1`,
+  ausgeführt wird dein Code mit dem installierten Python. Kein Konto, keine Cloud.
+- **Server (optional):** `pypad-server.py` + `online.html` — Login, eigener Workspace pro Benutzer,
+  ausgeführt wird der Code in einem **abgesicherten Sandkasten** (eigener Systembenutzer, Speicher-/
+  CPU-Limits, standardmäßig ohne Netz; auf Wunsch mit Internet). Für Handy, Tablet und andere Rechner
+  im eigenen Netz oder Tailnet.
+
+*A browser-based Python editor in two modes: local (127.0.0.1, your own Python) and an optional server
+variant with login, per-user workspaces and a sandboxed runner.*
 
 ![PyPad](docs/screenshot.png)
 
@@ -56,6 +62,8 @@ ausgeführt wird dein Code mit dem installierten Python.
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+- **Löschen direkt in der Dateiliste:** jede Datei und jeder Ordner hat ein **✕** (mit Rückfrage) — im lokalen Ordner und im Online-Workspace
+- **GitHub-Anmeldung:** Token im Git-Panel eintragen (wird bei GitHub geprüft, danach gehen **Push**, **Pull** und **private Repos**). Online wird er pro Benutzer mit `chmod 600` gespeichert, offline nur lokal im Browser; „Abmelden" entfernt ihn wieder.
 - **Internet im ausgefuehrten Code:** `urllib`/`requests` funktionieren direkt; fehlt dem Python ein Zertifikatsbuendel, reicht PyPad `SSL_CERT_FILE`/`REQUESTS_CA_BUNDLE` automatisch nach (macOS-Symptom `CERTIFICATE_VERIFY_FAILED`)
 - **Code von GitHub laden:** im Git-Panel eine GitHub-Adresse eintippen (`https://github.com/user/repo` oder kurz `user/repo`) und **Laden** — das Repo wird in den Ordner geklont. Danach zeigen Status/Commit/Push/Pull auf das geladene Repo. Nur `github.com` wird angenommen, geklont wird flach (`--depth 1`).
 - **Mehrere Sprachen:** Syntax-Highlighting für JavaScript, HTML, CSS, JSON und Markdown (Ausführen bleibt Python)
@@ -116,6 +124,8 @@ Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem
 - HTTPS mit echtem Zertifikat, Sitzungen (HttpOnly/Secure/SameSite), Login-Bremse
 - Dateizugriff nur im eigenen Workspace (Pfad-Traversal blockiert)
 - Gleiches Git-Panel wie offline: Repo von GitHub laden, danach Status/Diff/Commit/Push/Pull im geladenen Ordner
+- **GitHub-Anmeldung** per Token (geprüft über die GitHub-API, serverseitig mit `chmod 600` je Benutzer) — damit funktionieren Push, Pull und private Repos
+- **Löschen** von Dateien und Ordnern direkt in der Liste (✕ mit Rückfrage); der Workspace selbst bleibt geschützt
 - Adressen werden **IPv4 zuerst** aufgeloest (vermeidet lange Haenger, wenn eine IPv6-Adresse vorhanden aber nicht erreichbar ist)
 - Optionaler **Internet-Zugriff** pro Lauf (Haekchen "Internet", Standard aus): Internet ja, eigenes Netz nein - Loopback, RFC1918, Tailnet, Link-Local und IPv6-Privat bleiben gesperrt (nftables filtert nur den Sandkasten-Benutzer). Einrichtung: `/srv/pypad/netz-setup/setup.sh` als root.
 

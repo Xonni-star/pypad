@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.9.0 - 2026-10-16
+
+**GitHub-Anmeldung, Loeschen, Beschreibung**
+- **GitHub-Token** im Git-Panel: wird ueber die GitHub-API geprueft und danach fuer Push, Pull und private Repos benutzt. Online je Benutzer mit chmod 600 gespeichert, offline nur lokal im Browser; "Abmelden" entfernt ihn wieder.
+- **Loeschen:** Dateien und Ordner lassen sich direkt in der Dateiliste entfernen (✕ mit Rueckfrage) - online im Workspace, offline im geladenen Ordner; der Workspace selbst bleibt geschuetzt
+- Klonen privater Repos nutzt das gespeicherte Token; Git-Befehle haben jetzt 60 s Zeitlimit
+- README/Beschreibung neu gefasst: PyPad ist nicht mehr nur ein Offline-Editor (lokaler Editor + Server-Variante)
+
 ## 1.8.0 - 2026-10-16
 
 **Online-Variante: optionaler Internet-Zugriff im Sandkasten**
