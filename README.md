@@ -58,6 +58,7 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
 - **Mehrere Sprachen:** Syntax-Highlighting für JavaScript, HTML, CSS, JSON und Markdown (Ausführen bleibt Python)
 - **Markdown-Vorschau**, **Gehe-zu-Definition** (F3), **zuletzt geöffnete Dateien** und **frei verschiebbare Fenstergrößen** (Trenner ziehen)
+- **Server-Zugriff (SSH):** Dateien auf entfernten Rechnern über SSH auflisten, öffnen und speichern — Server einfach ins „Server"-Feld der Datei-Leiste eintippen
 - **Snippets** speichern / laden / löschen
 - **Lernbereich:** Lektionen mit *Beispiel / Übung / Lösung*; Wechseln verliert keine Eingaben,
   Übungen werden automatisch gesichert
@@ -82,6 +83,25 @@ PyPad.bat                # Windows
 
 Der Browser öffnet sich automatisch auf `http://127.0.0.1:8765/`.
 Terminal-Fenster offen lassen; beenden mit Ctrl+C.
+
+## Verbindungen (SSH / FTP / FTPS)
+
+Die Datei-Leiste hat ein Verbindungs-Auswahlfeld plus ein Zahnrad. Damit legst du Verbindungen an:
+Name, Protokoll (SSH, FTP, FTPS), Host, Port, Benutzer, Passwort.
+
+- Auswahl einer Verbindung: Dateiliste, Oeffnen und Speichern (Cmd+S) gehen auf den Server.
+- SSH nutzt deinen Key-Login (SSH mit Passwort braucht zusaetzlich das Tool sshpass).
+- FTP/FTPS laufen nativ (ftplib), inklusive Passwort-Login.
+- Zugangsdaten liegen lokal in verbindungen.json (nur fuer dich lesbar, chmod 600).
+- Pfade werden sauber quotiert - kein Shell-Injection.
+
+Die Datei-Leiste hat ein **Server**-Feld. Steht dort ein Server-Name (Alias aus deiner
+`~/.ssh/config` oder eine IP), gehen Liste/Lesen/Speichern über **SSH** statt lokal:
+
+- Der Rechner muss per SSH erreichbar sein und **Key-Login** erlauben (kein Passwort-Prompt),
+  z. B. Eintrag in `~/.ssh/config` mit `IdentityFile`.
+- Befehle: `ls`, `cat`, `cat > pfad` — Pfade werden sauber quotiert, kein Shell-Injection.
+- `Cmd+S` schreibt die Datei direkt auf den Server zurück.
 
 ## App und Startskripte
 

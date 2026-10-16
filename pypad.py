@@ -8,11 +8,14 @@ Optionen (Umgebungsvariablen): PYPAD_PORT, PYPAD_TIMEOUT, PYPAD_MAX_RUNTIME, PYP
 """
 import ast
 import builtins
+import ftplib
 import importlib
+import io
 import json
 import keyword
 import os
 import re
+import shlex
 import shutil
 import signal
 import socket
@@ -85,6 +88,144 @@ def abs_pfad(pfad):
         return p.resolve()
     except OSError:
         return p
+
+
+HOST_RE = re.compile(r"^[A-Za-z0-9_.@:-]{1,80}$")
+
+
+def remote_lauf(host, befehl, stdin_text=None):
+    """Einen SSH-Befehl auf einem entfernten Server ausfuehren (nutzt ~/.ssh/config und Keys)."""
+    if not HOST_RE.match(host or ""):
+        return {"error": "ungueltiger Server-Name"}
+    try:
+        fertig = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host, befehl],
+            input=stdin_text, capture_output=True, text=True, timeout=20)
+        return {"ausgabe": fertig.stdout or "", "fehler": fertig.stderr or "", "rc": fertig.returncode}
+    except subprocess.TimeoutExpired:
+        return {"error": "Verbindung zum Server hat zu lange gedauert"}
+    except FileNotFoundError:
+        return {"error": "ssh ist nicht installiert"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+VERBINDUNGEN = APP_DIR / "verbindungen.json"
+
+
+def verbindungen_lesen():
+    try:
+        daten = json.loads(VERBINDUNGEN.read_text(encoding="utf-8"))
+        return daten if isinstance(daten, list) else []
+    except Exception:
+        return []
+
+
+def verbindungen_schreiben(liste):
+    VERBINDUNGEN.write_text(json.dumps(liste, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        os.chmod(VERBINDUNGEN, 0o600)
+    except OSError:
+        pass
+
+
+def verbindung_finden(name):
+    for v in verbindungen_lesen():
+        if v.get("name") == name:
+            return v
+    return None
+
+
+def ssh_befehl(profil, befehl, stdin_text=None):
+    host = profil.get("host") or ""
+    user = profil.get("user") or ""
+    port = str(profil.get("port") or 22)
+    ziel = (user + "@" + host) if user else host
+    passwort = profil.get("passwort") or ""
+    try:
+        if passwort and shutil.which("sshpass"):
+            cmd = ["sshpass", "-e", "ssh", "-o", "StrictHostKeyChecking=accept-new",
+                   "-o", "ConnectTimeout=8", "-p", port, ziel, befehl]
+            env = dict(os.environ, SSHPASS=passwort)
+        elif passwort:
+            return {"error": "SSH mit Passwort braucht 'sshpass' (brew install sshpass) - oder nutze Key-Login"}
+        else:
+            cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-p", port, ziel, befehl]
+            env = None
+        fertig = subprocess.run(cmd, input=stdin_text, capture_output=True, text=True,
+                                timeout=20, env=env)
+        return {"ausgabe": fertig.stdout or "", "fehler": fertig.stderr or "", "rc": fertig.returncode}
+    except subprocess.TimeoutExpired:
+        return {"error": "Zeitueberschreitung"}
+    except FileNotFoundError:
+        return {"error": "ssh nicht installiert"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def ftp_verbinden(profil):
+    tls = profil.get("protokoll") == "ftps"
+    klasse = ftplib.FTP_TLS if tls else ftplib.FTP
+    try:
+        ftp = klasse()
+        ftp.connect(profil.get("host"), int(profil.get("port") or (990 if tls else 21)), timeout=10)
+        if tls:
+            ftp.auth()
+        ftp.login(profil.get("user") or "anonymous", profil.get("passwort") or "")
+        if tls:
+            try:
+                ftp.prot_p()
+            except Exception:
+                pass
+        return ftp, None
+    except Exception as exc:
+        return None, "FTP-Verbindung fehlgeschlagen: " + str(exc)
+
+
+def verbindung_operieren(profil, pfad, aktion, code=None):
+    proto = profil.get("protokoll") or "ssh"
+    if proto == "ssh":
+        if aktion == "liste":
+            r = ssh_befehl(profil, "ls -1p -- " + shlex.quote(pfad or "."))
+            if r.get("error") or r.get("rc") not in (0, None):
+                return {"error": (r.get("fehler") or r.get("error") or "Ordner nicht erreichbar").strip()}
+            dateien = sorted(z for z in (r.get("ausgabe") or "").splitlines() if z and not z.endswith("/"))
+            return {"pfad": pfad, "dateien": dateien}
+        if aktion == "lesen":
+            r = ssh_befehl(profil, "cat -- " + shlex.quote(pfad))
+            if r.get("error") or r.get("rc") not in (0, None):
+                return {"error": (r.get("fehler") or r.get("error") or "Datei nicht lesbar").strip()}
+            return {"pfad": pfad, "code": r.get("ausgabe") or ""}
+        if aktion == "schreiben":
+            r = ssh_befehl(profil, "cat > " + shlex.quote(pfad), stdin_text=code)
+            if r.get("error") or r.get("rc") not in (0, None):
+                return {"error": (r.get("fehler") or r.get("error") or "Schreiben fehlgeschlagen").strip()}
+            return {"gespeichert": pfad}
+    ftp, err = ftp_verbinden(profil)
+    if err:
+        return {"error": err}
+    try:
+        if aktion == "liste":
+            namen = []
+            try:
+                namen = [e[0] for e in ftp.mlsd(pfad or ".") if e[1].get("type") == "file"]
+            except Exception:
+                namen = [str(n).split("/")[-1] for n in (ftp.nlst(pfad or ".") or []) if n]
+            return {"pfad": pfad, "dateien": sorted(namen)}
+        if aktion == "lesen":
+            buf = io.BytesIO()
+            ftp.retrbinary("RETR " + pfad, buf.write)
+            return {"pfad": pfad, "code": buf.getvalue().decode("utf-8", "replace")}
+        if aktion == "schreiben":
+            ftp.storbinary("STOR " + pfad, io.BytesIO((code or "").encode("utf-8")))
+            return {"gespeichert": pfad}
+    except Exception as exc:
+        return {"error": str(exc)}
+    finally:
+        try:
+            ftp.quit()
+        except Exception:
+            pass
 
 
 def git_ausfuehren(pfad, *args):
@@ -1075,6 +1216,52 @@ class Handler(BaseHTTPRequestHandler):
                 data = []
             self._json({"lektionen": data})
             return
+        if url.path == "/verbindungen":
+            daten = []
+            for v in verbindungen_lesen():
+                daten.append({"name": v.get("name"), "protokoll": v.get("protokoll"), "host": v.get("host"),
+                              "port": v.get("port"), "user": v.get("user"),
+                              "hat_passwort": bool(v.get("passwort"))})
+            self._json({"verbindungen": daten})
+            return
+        if url.path == "/verbindung-liste":
+            q = parse_qs(url.query)
+            profil = verbindung_finden((q.get("name") or [""])[0])
+            if not profil:
+                self._json({"error": "unbekannte Verbindung"}, 404)
+                return
+            self._json(verbindung_operieren(profil, (q.get("pfad") or [""])[0], "liste"))
+            return
+        if url.path == "/verbindung-lesen":
+            q = parse_qs(url.query)
+            profil = verbindung_finden((q.get("name") or [""])[0])
+            if not profil:
+                self._json({"error": "unbekannte Verbindung"}, 404)
+                return
+            self._json(verbindung_operieren(profil, (q.get("pfad") or [""])[0], "lesen"))
+            return
+        if url.path == "/remote":
+            query = parse_qs(url.query)
+            host = (query.get("host") or [""])[0]
+            pfad = (query.get("pfad") or [""])[0]
+            ziel = shlex.quote(pfad) if pfad else shlex.quote(".")
+            r = remote_lauf(host, "ls -1p -- " + ziel)
+            if r.get("error") or (r.get("rc") not in (0, None)):
+                self._json({"error": (r.get("fehler") or r.get("error") or "Ordner nicht erreichbar")})
+                return
+            dateien = sorted(z for z in (r.get("ausgabe") or "").splitlines() if z and not z.endswith("/"))
+            self._json({"pfad": pfad, "dateien": dateien})
+            return
+        if url.path == "/remote-read":
+            query = parse_qs(url.query)
+            host = (query.get("host") or [""])[0]
+            pfad = (query.get("pfad") or [""])[0]
+            r = remote_lauf(host, "cat -- " + shlex.quote(pfad))
+            if r.get("error") or (r.get("rc") not in (0, None)):
+                self._json({"error": (r.get("fehler") or r.get("error") or "Datei nicht lesbar")})
+                return
+            self._json({"pfad": pfad, "code": r.get("ausgabe") or ""})
+            return
         if url.path == "/git":
             query = parse_qs(url.query)
             pfad = abs_pfad((query.get("pfad") or [""])[0])
@@ -1189,6 +1376,51 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "unbekannter Befehl"}, 400)
                 return
             self._json({"ok": lauf.befehl(befehl)})
+            return
+
+        if url.path == "/verbindung":
+            liste = verbindungen_lesen()
+            neu = {"name": (data.get("name") or "").strip(),
+                   "protokoll": data.get("protokoll") or "ssh",
+                   "host": (data.get("host") or "").strip(),
+                   "port": data.get("port") or "",
+                   "user": (data.get("user") or "").strip(),
+                   "passwort": data.get("passwort") or ""}
+            if not neu["name"] or not neu["host"]:
+                self._json({"error": "Name und Host sind noetig"}, 400)
+                return
+            liste = [v for v in liste if v.get("name") != neu["name"]]
+            liste.append(neu)
+            verbindungen_schreiben(liste)
+            self._json({"gespeichert": neu["name"]})
+            return
+
+        if url.path == "/verbindung-loeschen":
+            name = (data.get("name") or "").strip()
+            verbindungen_schreiben([v for v in verbindungen_lesen() if v.get("name") != name])
+            self._json({"geloescht": name})
+            return
+
+        if url.path == "/verbindung-schreiben":
+            profil = verbindung_finden((data.get("name") or "").strip())
+            if not profil:
+                self._json({"error": "unbekannte Verbindung"}, 404)
+                return
+            self._json(verbindung_operieren(profil, data.get("pfad") or "", "schreiben", data.get("code") or ""))
+            return
+
+        if url.path == "/remote-write":
+            host = data.get("host")
+            pfad = data.get("pfad")
+            code = data.get("code")
+            if code is None:
+                self._json({"error": "kein Code"}, 400)
+                return
+            r = remote_lauf(host, "cat > " + shlex.quote(pfad), stdin_text=code)
+            if r.get("error") or (r.get("rc") not in (0, None)):
+                self._json({"error": (r.get("fehler") or r.get("error") or "Schreiben fehlgeschlagen")})
+                return
+            self._json({"gespeichert": pfad})
             return
 
         if url.path == "/git-commit":

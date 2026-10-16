@@ -40,6 +40,9 @@ main{flex:1;display:flex;flex-direction:row;min-height:0}
 #zuletztListe li:hover{background:#1b2338;color:var(--fg)}
 .df-input{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
 .df-input input{flex:1;min-width:0;background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;outline:none}
+.df-input select{background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;max-width:100%}
+.verbindung-form{display:flex;flex-direction:column;gap:6px;padding:8px;border-bottom:1px solid var(--line)}
+.verbindung-form input,.verbindung-form select{background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace;outline:none}
 #dateiListe{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #dateiListe li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dateiListe li:hover{background:#1b2338}
@@ -188,7 +191,21 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
     <div class="pane-head"><span>Dateien</span><button id="btnDateiZu" class="mini" title="schliessen">&times;</button></div>
     <ul id="zuletztListe"></ul>
     <div class="df-input">
-      <input id="ordnerInput" placeholder="Ordnerpfad (leer = dieser Ordner)">
+      <select id="verbindungSelect"><option value="">(lokal)</option></select>
+      <button id="btnVerbindung" class="mini" title="Verbindungen verwalten">&#9881;</button>
+    </div>
+    <div class="verbindung-form" id="verbindungForm" hidden>
+      <input id="vName" placeholder="Name (z. B. EliteBook)">
+      <select id="vProto"><option value="ssh">SSH</option><option value="ftp">FTP</option><option value="ftps">FTPS</option></select>
+      <input id="vHost" placeholder="Host (IP oder Name)">
+      <input id="vPort" placeholder="Port (22 / 21)">
+      <input id="vUser" placeholder="Benutzer">
+      <input id="vPass" type="password" placeholder="Passwort">
+      <button id="btnVSave">Speichern</button>
+      <button id="btnVDelete">Loeschen</button>
+    </div>
+    <div class="df-input">
+      <input id="ordnerInput" placeholder="Pfad (lokal: leer = dieser Ordner)">
       <button id="btnOrdnerLaden">Laden</button>
     </div>
     <ul id="dateiListe"></ul>
@@ -766,12 +783,13 @@ function zuletztLaden() {
 function zuletztMerken(file) {
   var key = slotKey(file.dir, file.name);
   var liste = zuletztLaden().filter(function (x) { return x.key !== key; });
-  liste.unshift({ key: key, dir: file.dir, name: file.name, pfad: file.pfad });
+  liste.unshift({ key: key, dir: file.dir, name: file.name, pfad: file.pfad, host: file.host });
   try { localStorage.setItem('pypad_zuletzt', JSON.stringify(liste.slice(0, 10))); } catch (e) { }
   zuletztAnzeigen();
 }
 
 function zuletztTitel(e) {
+  if (e.host) { return e.host + ':' + e.name; }
   if (e.dir && e.dir.indexOf('lektionen/') === 0) {
     var nr = e.dir.replace('lektionen/lektion-', '').split('-')[0];
     return 'L' + nr + ' ' + e.name;
@@ -793,7 +811,7 @@ function zuletztAnzeigen() {
 }
 
 function dateiOeffnen(file) {
-  if (file.pfad) { ordnerDateiOeffnen(file.pfad); return; }
+  if (file.pfad) { ordnerDateiOeffnen(file.pfad, file.host); return; }
   var key = slotKey(file.dir, file.name);
   stashCurrent();
   if (buffers[key]) {
@@ -1250,6 +1268,7 @@ function tabRegistrieren(key, file) {
 }
 
 function tabTitel(t) {
+  if (t.host) { return t.host + '/' + t.name; }
   if (t.dir && t.dir.indexOf('lektionen/') === 0) {
     var nr = t.dir.replace('lektionen/lektion-', '').split('-')[0];
     return (nr || '') + '/' + t.name;
@@ -1316,6 +1335,65 @@ function tabSchliessen(key) {
     }
   }
   tabAnzeigen();
+}
+
+function verbindungAktuell() {
+  return document.getElementById('verbindungSelect').value || '';
+}
+
+function verbindungenLaden(auswahl) {
+  return fetch('/verbindungen').then(function (r) { return r.json(); }).then(function (d) {
+    var sel = document.getElementById('verbindungSelect');
+    var opts = '<option value="">(lokal)</option>';
+    (d.verbindungen || []).forEach(function (v) {
+      opts += '<option value="' + esc(v.name) + '">' + esc(v.name + ' (' + (v.protokoll || 'ssh').toUpperCase() + ' ' + v.host + ')') + '</option>';
+    });
+    sel.innerHTML = opts;
+    if (auswahl) { sel.value = auswahl; }
+  }).catch(function () { });
+}
+
+function verbindungFormZeigen() {
+  var form = document.getElementById('verbindungForm');
+  form.hidden = !form.hidden;
+  if (!form.hidden) {
+    var name = verbindungAktuell();
+    document.getElementById('vName').value = name;
+    document.getElementById('vHost').value = '';
+    document.getElementById('vUser').value = '';
+    document.getElementById('vPass').value = '';
+    document.getElementById('vPort').value = '';
+  }
+}
+
+function verbindungSpeichern() {
+  var daten = {
+    name: document.getElementById('vName').value.trim(),
+    protokoll: document.getElementById('vProto').value,
+    host: document.getElementById('vHost').value.trim(),
+    port: document.getElementById('vPort').value.trim(),
+    user: document.getElementById('vUser').value.trim(),
+    passwort: document.getElementById('vPass').value
+  };
+  if (!daten.name || !daten.host) { footHint.textContent = 'Name und Host sind noetig'; return; }
+  fetch('/verbindung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      footHint.textContent = d.gespeichert ? ('gespeichert: ' + d.gespeichert) : ('Fehler: ' + (d.error || '?'));
+      document.getElementById('verbindungForm').hidden = true;
+      return verbindungenLaden(d.gespeichert);
+    }).catch(function () { });
+}
+
+function verbindungLoeschen() {
+  var name = document.getElementById('vName').value.trim() || verbindungAktuell();
+  if (!name) { return; }
+  fetch('/verbindung-loeschen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
+    .then(function () {
+      footHint.textContent = 'geloescht: ' + name;
+      document.getElementById('verbindungForm').hidden = true;
+      return verbindungenLaden('');
+    }).catch(function () { });
 }
 
 function gitOrdner() {
@@ -1392,33 +1470,39 @@ function gitBefehl(was) {
 }
 
 function ordnerLaden() {
+  var name = verbindungAktuell();
   var eingabe = document.getElementById('ordnerInput');
   var pfad = eingabe.value.trim() || '';
-  fetch('/ordner?pfad=' + encodeURIComponent(pfad))
-    .then(function (r) { return r.ok ? r.json() : null; })
+  var url = name
+    ? ('/verbindung-liste?name=' + encodeURIComponent(name) + '&pfad=' + encodeURIComponent(pfad))
+    : ('/ordner?pfad=' + encodeURIComponent(pfad));
+  fetch(url)
+    .then(function (r) { return r.json(); })
     .then(function (d) {
-      if (!d) { footHint.textContent = 'Ordner nicht gefunden'; return; }
-      if (!eingabe.value.trim()) { eingabe.value = d.pfad; }
+      if (d.error) { footHint.textContent = d.error.slice(0, 110); return; }
+      if (!eingabe.value.trim() && d.pfad && !host) { eingabe.value = d.pfad; }
       var ul = document.getElementById('dateiListe');
       ul.innerHTML = '';
       (d.dateien || []).forEach(function (name) {
         var li = document.createElement('li');
         li.textContent = name;
         li.setAttribute('data-pfad', d.pfad + '/' + name);
+        li.setAttribute('data-host', name);
         ul.appendChild(li);
       });
-      if (!d.dateien.length) { footHint.textContent = 'keine .py-Dateien in ' + d.pfad; }
-      gitAktualisieren();
+      if (!d.dateien.length) { footHint.textContent = name ? ('keine Dateien auf ' + name) : 'keine Text-Dateien'; }
+      if (!name) { gitAktualisieren(); }
     }).catch(function () { footHint.textContent = 'keine Verbindung'; });
 }
 
-function ordnerDateiOeffnen(pfad) {
-  var key = slotKey('ordner', pfad);
-  var file = { dir: 'ordner', name: pfad.split('/').pop(), pfad: pfad };
+function ordnerDateiOeffnen(pfad, host) {
+  host = host || '';
+  var key = slotKey(host ? ('remote:' + host) : 'ordner', pfad);
+  var file = { dir: host ? 'remote' : 'ordner', name: pfad.split('/').pop(), pfad: pfad, host: host };
   stashCurrent();
   zuletztMerken(file);
   if (!offeneTabs.some(function (t) { return t.key === key; })) {
-    offeneTabs.push({ key: key, dir: 'ordner', name: file.name, pfad: pfad });
+    offeneTabs.push({ key: key, dir: file.dir, name: file.name, pfad: pfad, host: host });
   }
   if (buffers[key]) {
     enterSlot(key, file, buffers[key].code);
@@ -1426,13 +1510,15 @@ function ordnerDateiOeffnen(pfad) {
     showFileHint();
     tabAnzeigen();
     updateCursor();
-    zuletztMerken(file);
     return;
   }
-  fetch('/datei?pfad=' + encodeURIComponent(pfad))
-    .then(function (r) { return r.ok ? r.json() : null; })
+  var url = host
+    ? ('/verbindung-lesen?name=' + encodeURIComponent(host) + '&pfad=' + encodeURIComponent(pfad))
+    : ('/datei?pfad=' + encodeURIComponent(pfad));
+  fetch(url)
+    .then(function (r) { return r.json(); })
     .then(function (d) {
-      if (!d || d.code === undefined) { footHint.textContent = 'Datei nicht lesbar'; return; }
+      if (!d || d.code === undefined) { footHint.textContent = (d && d.error) ? d.error.slice(0, 100) : 'Datei nicht lesbar'; return; }
       buffers[key] = { code: d.code, dirty: false };
       enterSlot(key, file, d.code);
       tabAnzeigen();
@@ -1680,10 +1766,14 @@ async function loadFile() {
 async function saveFile() {
   if (currentFile) {
     if (currentFile.pfad) {
-      fetch('/datei', {
+      var ziel = currentFile.host ? '/verbindung-schreiben' : '/datei';
+      var body = currentFile.host
+        ? { name: currentFile.host, pfad: currentFile.pfad, code: getCode() }
+        : { pfad: currentFile.pfad, code: getCode() };
+      fetch(ziel, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pfad: currentFile.pfad, code: getCode() })
+        body: JSON.stringify(body)
       }).then(function (r) { return r.json(); }).then(function (d) {
         if (d.gespeichert) {
           dirty = false;
@@ -1833,13 +1923,16 @@ document.getElementById('btnOrdnerLaden').addEventListener('click', ordnerLaden)
 document.getElementById('ordnerInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { ordnerLaden(); } });
 document.getElementById('dateiListe').addEventListener('click', function (e) {
   var t = e.target;
-  if (t.getAttribute && t.getAttribute('data-pfad')) { ordnerDateiOeffnen(t.getAttribute('data-pfad')); }
+  if (t.getAttribute && t.getAttribute('data-pfad')) { ordnerDateiOeffnen(t.getAttribute('data-pfad'), t.getAttribute('data-host') || ''); }
 });
 document.getElementById('tabs').addEventListener('click', function (e) {
   var t = e.target;
   if (t.getAttribute && t.getAttribute('data-close')) { tabSchliessen(t.getAttribute('data-close')); return; }
   if (t.getAttribute && t.getAttribute('data-key')) { tabAktivieren(t.getAttribute('data-key')); return; }
 });
+document.getElementById('btnVerbindung').addEventListener('click', verbindungFormZeigen);
+document.getElementById('btnVSave').addEventListener('click', verbindungSpeichern);
+document.getElementById('btnVDelete').addEventListener('click', verbindungLoeschen);
 document.getElementById('btnGitRefresh').addEventListener('click', gitAktualisieren);
 document.getElementById('btnGitCommit').addEventListener('click', function () { gitBefehl('commit'); });
 document.getElementById('btnGitPush').addEventListener('click', function () { gitBefehl('push'); });
@@ -1904,6 +1997,7 @@ loadLessons().then(ladeFortschritt);
 einstellungenInit();
 teilerInit();
 zuletztAnzeigen();
+verbindungenLaden();
 </script>
 </body>
 </html>

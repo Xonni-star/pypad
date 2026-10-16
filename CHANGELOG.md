@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.2.0 — 2026-10-16
+
+**Server-Zugriff**
+- Verbindungs-System: Server selbst anlegen (Name, Protokoll SSH/FTP/FTPS, Host, Port, Benutzer, Passwort)
+- Dateien auf entfernten Rechnern auflisten, oeffnen und speichern (Cmd+S schreibt auf den Server)
+- SSH (Key-Login oder Passwort via sshpass), FTP/FTPS nativ ueber ftplib
+- Zugangsdaten lokal in verbindungen.json (chmod 600)
+
 ## 1.1.0 — 2026-10-16
 
 **Editor & Bedienung**
