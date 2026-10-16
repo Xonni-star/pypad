@@ -36,6 +36,16 @@ main.mit-dateien{grid-template-columns:200px 1fr 1fr}
 #dateiListe{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #dateiListe li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dateiListe li:hover{background:#1b2338}
+.git-panel{border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.git-branch{padding:6px 10px;font:12px ui-monospace,Menlo,monospace;color:#ffd479;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.git-status{overflow:auto;max-height:180px;padding:4px 0}
+.git-status .zeile{display:flex;gap:6px;padding:3px 10px;font:11px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.git-status .zeile:hover{background:#1b2338}
+.git-status .zeile .mark{color:var(--acc);flex-shrink:0}
+.git-commit{display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--line)}
+.git-commit input{flex:1;min-width:0;background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Menlo,monospace}
+.git-actions{display:flex;gap:6px;padding:0 8px 8px}
+.git-log{padding:4px 10px;font:11px ui-monospace,Menlo,monospace;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tabs{display:flex;gap:2px;padding:4px 8px 0;background:#131a29;overflow-x:auto;border-bottom:1px solid var(--line);min-height:30px}
 .tab{display:flex;align-items:center;gap:6px;padding:5px 10px;background:#1b2338;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;font-size:12px;color:var(--dim);cursor:pointer;white-space:nowrap;flex-shrink:0}
 .tab.aktiv{background:#0c1120;color:var(--fg);font-weight:600}
@@ -161,6 +171,19 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
       <button id="btnOrdnerLaden">Laden</button>
     </div>
     <ul id="dateiListe"></ul>
+    <div class="git-panel" id="gitPanel">
+      <div class="pane-head"><span>Git</span><button id="btnGitRefresh" class="mini" title="aktualisieren">&#8635;</button></div>
+      <div class="git-branch" id="gitBranch">(Ordner laden)</div>
+      <div class="git-status" id="gitStatus"></div>
+      <div class="git-commit">
+        <input id="gitMessage" placeholder="Commit-Nachricht">
+        <button id="btnGitCommit">Commit</button>
+      </div>
+      <div class="git-actions">
+        <button id="btnGitPush">Push</button>
+        <button id="btnGitPull">Pull</button>
+      </div>
+    </div>
   </aside>
   <section class="pane editor-pane">
     <div class="tabs" id="tabs"></div>
@@ -208,6 +231,11 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
 
 <script src="vendor/ace.js"></script>
 <script src="vendor/mode-python.js"></script>
+<script src="vendor/mode-javascript.js"></script>
+<script src="vendor/mode-html.js"></script>
+<script src="vendor/mode-markdown.js"></script>
+<script src="vendor/mode-css.js"></script>
+<script src="vendor/mode-json.js"></script>
 <script src="vendor/theme-tomorrow_night.js"></script>
 <script src="vendor/theme-tomorrow.js"></script>
 <script src="vendor/ext-language_tools.js"></script>
@@ -333,6 +361,7 @@ var PY_SNIPPETS = [
 
 var pyCompleter = {
   getCompletions: function (ed, session, pos, prefix, callback) {
+    if (session.getMode().$id !== 'ace/mode/python') { callback(null, []); return; }
     var chain = dottedChain(session, pos);
     var out = [];
     var seen = {};
@@ -462,6 +491,11 @@ function busy(state) {
 
 function startRun() {
   if (currentRun || debugRun) { return; }
+  if (!istPython()) {
+    outEl.innerHTML = '';
+    appendChunk('dim', '[PyPad] Nur Python-Code kann ausgefuehrt werden. Diese Datei ist ' + editor.session.getMode().$id + ' - zum Anzeigen und Bearbeiten.\n');
+    return;
+  }
   outEl.innerHTML = '';
   nextIndex = 0;
   promptWanted = false;
@@ -833,6 +867,11 @@ function debugMarkerZeigen(row) {
 
 function debugStart() {
   if (currentRun || debugRun) { return; }
+  if (!istPython()) {
+    outEl.innerHTML = '';
+    appendChunk('dim', '[PyPad] Der Debugger funktioniert nur mit Python-Code.\n');
+    return;
+  }
   outEl.innerHTML = '';
   errBuffer = '';
   nextIndex = 0;
@@ -1151,6 +1190,79 @@ function tabSchliessen(key) {
   tabAnzeigen();
 }
 
+function gitOrdner() {
+  return document.getElementById('ordnerInput').value.trim() || '';
+}
+
+function gitAktualisieren() {
+  fetch('/git?pfad=' + encodeURIComponent(gitOrdner()))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      var branch = document.getElementById('gitBranch');
+      var statusEl = document.getElementById('gitStatus');
+      if (!d || d.branch.error) {
+        branch.textContent = 'kein Git-Repo (oder kein Ordner)';
+        statusEl.innerHTML = '';
+        return;
+      }
+      branch.textContent = 'Branch: ' + (d.branch.ausgabe || '').trim();
+      var zeilen = (d.status.ausgabe || '').split(String.fromCharCode(10)).filter(Boolean);
+      statusEl.innerHTML = '';
+      if (!zeilen.length) {
+        var leer = document.createElement('div');
+        leer.className = 'git-log';
+        leer.textContent = 'Arbeitskopie sauber';
+        statusEl.appendChild(leer);
+      }
+      zeilen.forEach(function (z) {
+        var div = document.createElement('div');
+        div.className = 'zeile';
+        var mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.textContent = z.slice(0, 2);
+        var datei = document.createElement('span');
+        var name = z.slice(3).trim();
+        datei.textContent = name;
+        datei.setAttribute('data-diff', name);
+        div.appendChild(mark);
+        div.appendChild(datei);
+        statusEl.appendChild(div);
+      });
+      ((d.log.ausgabe || '').trim().split(String.fromCharCode(10)).slice(0, 3)).forEach(function (l) {
+        var div = document.createElement('div');
+        div.className = 'git-log';
+        div.textContent = l;
+        statusEl.appendChild(div);
+      });
+    }).catch(function () { });
+}
+
+function gitDiffZeigen(datei) {
+  fetch('/git-diff?pfad=' + encodeURIComponent(gitOrdner()) + '&datei=' + encodeURIComponent(datei))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var nl = String.fromCharCode(10);
+      var h = '<span class="verlauf"><span class="vh">Diff: ' + esc(datei) + '</span>' + nl + esc(d.diff || '') + nl + '</span>' + nl;
+      outEl.insertAdjacentHTML('beforeend', h);
+      outEl.scrollTop = outEl.scrollHeight;
+    }).catch(function () { });
+}
+
+function gitBefehl(was) {
+  var pfad = gitOrdner();
+  var meldung = document.getElementById('gitMessage').value;
+  fetch('/git-' + was, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pfad: pfad, message: meldung })
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    var ausgabe = ((d.ausgabe || '') + (d.fehler || '') + (d.error || '')).trim();
+    footHint.textContent = was + ': ' + (ausgabe.slice(0, 70) || (d.ok ? 'ok' : 'fertig'));
+    document.getElementById('gitMessage').value = '';
+    gitAktualisieren();
+  }).catch(function () { footHint.textContent = 'keine Verbindung'; });
+}
+
 function ordnerLaden() {
   var eingabe = document.getElementById('ordnerInput');
   var pfad = eingabe.value.trim() || '';
@@ -1168,6 +1280,7 @@ function ordnerLaden() {
         ul.appendChild(li);
       });
       if (!d.dateien.length) { footHint.textContent = 'keine .py-Dateien in ' + d.pfad; }
+      gitAktualisieren();
     }).catch(function () { footHint.textContent = 'keine Verbindung'; });
 }
 
@@ -1245,9 +1358,24 @@ function stashCurrent() {
   return unsaved;
 }
 
+function modeFuer(name) {
+  var n = (name || '').toLowerCase();
+  if (/\.(js|mjs|cjs)$/.test(n)) { return 'ace/mode/javascript'; }
+  if (/\.(html|htm)$/.test(n)) { return 'ace/mode/html'; }
+  if (/\.(md|markdown)$/.test(n)) { return 'ace/mode/markdown'; }
+  if (/\.css$/.test(n)) { return 'ace/mode/css'; }
+  if (/\.json$/.test(n)) { return 'ace/mode/json'; }
+  return 'ace/mode/python';
+}
+
+function istPython() {
+  return editor.session.getMode().$id === 'ace/mode/python';
+}
+
 function enterSlot(key, file, text) {
   loading = true;
   setCode(text);
+  editor.session.setMode(modeFuer(file ? file.name : ''));
   loading = false;
   currentKey = key;
   currentFile = file;
@@ -1494,6 +1622,14 @@ document.getElementById('tabs').addEventListener('click', function (e) {
   var t = e.target;
   if (t.getAttribute && t.getAttribute('data-close')) { tabSchliessen(t.getAttribute('data-close')); return; }
   if (t.getAttribute && t.getAttribute('data-key')) { tabAktivieren(t.getAttribute('data-key')); return; }
+});
+document.getElementById('btnGitRefresh').addEventListener('click', gitAktualisieren);
+document.getElementById('btnGitCommit').addEventListener('click', function () { gitBefehl('commit'); });
+document.getElementById('btnGitPush').addEventListener('click', function () { gitBefehl('push'); });
+document.getElementById('btnGitPull').addEventListener('click', function () { gitBefehl('pull'); });
+document.getElementById('gitStatus').addEventListener('click', function (e) {
+  var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-diff')) { gitDiffZeigen(t.getAttribute('data-diff')); }
 });
 
 runBtn.addEventListener('click', startRun);

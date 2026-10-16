@@ -87,6 +87,22 @@ def abs_pfad(pfad):
         return p
 
 
+def git_ausfuehren(pfad, *args):
+    """Git-Befehl in einem Ordner ausfuehren - Ergebnis als Text."""
+    if not pfad or not Path(str(pfad)).is_dir():
+        return {"error": "kein Ordner: " + str(pfad)}
+    try:
+        fertig = subprocess.run(["git", "-C", str(pfad)] + list(args),
+                                capture_output=True, text=True, timeout=20)
+        return {"ausgabe": fertig.stdout or "", "fehler": fertig.stderr or "", "rc": fertig.returncode}
+    except subprocess.TimeoutExpired:
+        return {"error": "git hat zu lange gedauert"}
+    except FileNotFoundError:
+        return {"error": "git ist nicht installiert"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
 def resolve_dir(rel):
     """Erlaubte Ordner: 'snippets' oder 'lektionen/<lektion>' - sonst None."""
     rel = (rel or "snippets").strip().strip("/")
@@ -1059,13 +1075,37 @@ class Handler(BaseHTTPRequestHandler):
                 data = []
             self._json({"lektionen": data})
             return
+        if url.path == "/git":
+            query = parse_qs(url.query)
+            pfad = abs_pfad((query.get("pfad") or [""])[0])
+            self._json({
+                "pfad": str(pfad),
+                "branch": git_ausfuehren(pfad, "rev-parse", "--abbrev-ref", "HEAD"),
+                "status": git_ausfuehren(pfad, "status", "--short"),
+                "log": git_ausfuehren(pfad, "log", "--oneline", "-6"),
+            })
+            return
+        if url.path == "/git-diff":
+            query = parse_qs(url.query)
+            pfad = abs_pfad((query.get("pfad") or [""])[0])
+            datei = (query.get("datei") or [""])[0]
+            unstaged = git_ausfuehren(pfad, "diff", "--", datei)
+            staged = git_ausfuehren(pfad, "diff", "--cached", "--", datei)
+            diff = (unstaged.get("ausgabe", "") + staged.get("ausgabe", "")).strip()
+            self._json({"diff": diff or "(keine Aenderungen an dieser Datei)"})
+            return
         if url.path == "/ordner":
             query = parse_qs(url.query)
             pfad = abs_pfad((query.get("pfad") or [""])[0])
             if not pfad.is_dir():
                 self._json({"error": "kein Ordner: " + str(pfad)}, 400)
                 return
-            dateien = sorted(p.name for p in pfad.glob("*.py"))
+            endungen = {".py", ".js", ".mjs", ".cjs", ".html", ".htm", ".css", ".json",
+                        ".md", ".markdown", ".txt", ".sh", ".bat", ".yml", ".yaml", ".toml",
+                        ".ini", ".cfg", ".conf", ".csv", ".xml", ".svg"}
+            spezial = {"README", "LICENSE", "Makefile", "Dockerfile", ".gitignore", ".gitattributes"}
+            dateien = sorted(p.name for p in pfad.iterdir()
+                             if p.is_file() and (p.suffix.lower() in endungen or p.name in spezial))
             self._json({"pfad": str(pfad), "dateien": dateien})
             return
         if url.path == "/datei":
@@ -1149,6 +1189,29 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "unbekannter Befehl"}, 400)
                 return
             self._json({"ok": lauf.befehl(befehl)})
+            return
+
+        if url.path == "/git-commit":
+            pfad = abs_pfad(data.get("pfad"))
+            meldung = (data.get("message") or "").strip() or "Update"
+            add = git_ausfuehren(pfad, "add", "-A")
+            if add.get("error"):
+                self._json(add, 500)
+                return
+            commit = git_ausfuehren(pfad, "commit", "-m", meldung)
+            self._json({"ok": commit.get("rc") == 0,
+                        "ausgabe": commit.get("ausgabe", ""),
+                        "fehler": commit.get("fehler", "")})
+            return
+
+        if url.path == "/git-push":
+            pfad = abs_pfad(data.get("pfad"))
+            self._json(git_ausfuehren(pfad, "push"))
+            return
+
+        if url.path == "/git-pull":
+            pfad = abs_pfad(data.get("pfad"))
+            self._json(git_ausfuehren(pfad, "pull"))
             return
 
         if url.path == "/pruefen":

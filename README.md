@@ -55,6 +55,8 @@ ausgeführt wird dein Code mit dem installierten Python.
 - **Als Code-Editor:** Datei-Browser (beliebigen Ordner öffnen, .py-Dateien auflisten,
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
+- **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+- **Mehrere Sprachen:** Syntax-Highlighting für JavaScript, HTML, CSS, JSON und Markdown (Ausführen bleibt Python)
 - **Snippets** speichern / laden / löschen
 - **Lernbereich:** Lektionen mit *Beispiel / Übung / Lösung*; Wechseln verliert keine Eingaben,
   Übungen werden automatisch gesichert
