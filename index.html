@@ -750,25 +750,47 @@ function teilerInit() {
   var outPane = document.querySelector('.out-pane');
   var leiste = document.getElementById('dateiLeiste');
 
+  var mainEl = document.querySelector('main');
+
+  function schmal() { return window.innerWidth <= 900; }
+
   function anwenden() {
-    if (!einstellungen.edBreite) { einstellungen.edBreite = Math.max(200, editorPane.getBoundingClientRect().width); }
-    if (!einstellungen.leistenBreite) { einstellungen.leistenBreite = leiste.getBoundingClientRect().width || 200; }
-    editorPane.style.flex = '0 0 ' + einstellungen.edBreite + 'px';
-    leiste.style.flex = '0 0 ' + einstellungen.leistenBreite + 'px';
+    // Gestapelt (schmales Fenster): keine festen Breiten erzwingen, sonst klemmt die Ausgabe.
+    if (schmal()) {
+      editorPane.style.flex = '';
+      outPane.style.flex = '';
+      leiste.style.flex = '';
+      return;
+    }
+    var platz = Math.max(320, mainEl.getBoundingClientRect().width);
+    var leisteB = einstellungen.leistenBreite || 200;
+    var edB = einstellungen.edBreite || Math.max(200, editorPane.getBoundingClientRect().width);
+    // Nie mehr als der Platz hergibt - sonst laesst sich nichts mehr ziehen.
+    leisteB = Math.max(120, Math.min(leisteB, platz - 280));
+    edB = Math.max(160, Math.min(edB, platz - leisteB - 160));
+    einstellungen.leistenBreite = leisteB;
+    einstellungen.edBreite = edB;
+    editorPane.style.flex = '0 0 ' + edB + 'px';
+    leiste.style.flex = '0 0 ' + leisteB + 'px';
     outPane.style.flex = '1 1 0%';
   }
 
   function ziehen(teiler, vorher, istLinks) {
-    var startX = null, startBreite = null;
     teiler.addEventListener('mousedown', function (e) {
       e.preventDefault();
-      startX = e.clientX;
-      startBreite = vorher.getBoundingClientRect().width;
+      var r = teiler.getBoundingClientRect();
+      var quer = r.height > r.width;          // hoher, schmaler Trenner = nebeneinander -> waagerecht ziehen
+      var start = quer ? e.clientX : e.clientY;
+      var basis = quer ? vorher.getBoundingClientRect().width : vorher.getBoundingClientRect().height;
       teiler.classList.add('zug');
-      document.body.style.cursor = 'col-resize';
+      document.body.style.cursor = quer ? 'col-resize' : 'row-resize';
       document.body.style.userSelect = 'none';
       function move(ev) {
-        var neu = Math.max(120, startBreite + (ev.clientX - startX));
+        var jetzt = quer ? ev.clientX : ev.clientY;
+        var neu = Math.max(120, basis + (jetzt - start));
+        if (!quer) { vorher.style.flex = '1 1 ' + neu + 'px'; return; }
+        var platz = mainEl.getBoundingClientRect().width;
+        neu = Math.min(neu, Math.max(160, platz - 200));
         vorher.style.flex = '0 0 ' + neu + 'px';
         if (istLinks) { einstellungen.leistenBreite = neu; } else { einstellungen.edBreite = neu; }
       }
@@ -785,6 +807,7 @@ function teilerInit() {
     });
   }
   anwenden();
+  window.addEventListener('resize', anwenden);
   ziehen(teilerRechts, editorPane, false);
   ziehen(teilerLinks, leiste, true);
 }

@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.9.1 - 2026-10-16
+
+**Fenstergroessen wieder einstellbar**
+- Online-Variante: jetzt gibt es die ziehbaren Trenner wie offline (Seitenleiste | Editor | Ausgabe); die Breiten werden im Browser gemerkt
+- Bugfix offline: bei schmalem Fenster (unter 900 px) klemmte die Ansicht - feste Breiten wurden erzwungen und die Ausgabe war abgeschnitten. Jetzt wird gestapelt und die festen Breiten werden geloest
+- Bugfix: die Richtungserkennung des Trenners war vertauscht - beim Ziehen aenderte sich die falsche Groesse
+- Beim Aendern der Fenstergroesse werden die Breiten wieder angepasst und nie groesser als der Platz
+
 ## 1.9.0 - 2026-10-16
 
 **GitHub-Anmeldung, Loeschen, Beschreibung**

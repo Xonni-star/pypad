@@ -33,7 +33,10 @@ header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var
 #usersPanel{background:#131a29;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #app{display:flex;flex-direction:column;flex:1;min-height:0}
 main{flex:1;display:flex;min-height:0}
-.leiste{width:220px;min-width:170px;background:#0e1524;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.leiste{flex:0 0 220px;min-width:120px;background:#0e1524;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.teiler{flex:0 0 6px;background:var(--line);cursor:col-resize;z-index:5}
+.teiler:hover,.teiler.zug{background:var(--acc)}
+@media (max-width:900px){main{flex-direction:column}.teiler{flex:0 0 6px;cursor:row-resize}}
 .leiste .df{padding:8px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--line);word-break:break-all}
 #files{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
 #files li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -125,11 +128,13 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
         <div class="df"><button id="btnGitPush" class="mini">Push</button><button id="btnGitPull" class="mini">Pull</button></div>
       </div>
     </aside>
+    <div class="teiler" id="teilerLinks"></div>
     <section class="pane">
       <div class="tabs" id="tabs"></div>
       <div class="head"><span>Code</span><span id="fname" class="hint"></span><span class="spacer"></span><span id="cursor" class="hint">1:1</span><button id="btnSave" class="mini">Speichern</button></div>
       <div id="editor"></div>
     </section>
+    <div class="teiler" id="teilerRechts"></div>
     <section class="pane">
       <div class="head"><span>Ausgabe</span><span id="status" class="hint"></span><span class="spacer"></span>
         <label id="netzLabel" class="hint" hidden title="Internet fuer dieses Programm erlauben - dein LAN und der Server bleiben gesperrt"><input type="checkbox" id="netz"> Internet</label>
@@ -175,7 +180,69 @@ function zeigeApp(who) {
   binAdmin = who.admin;
   elem('btnUsers').hidden = !who.admin;
   initEditor();
+  teilerInit();
   ladeDateien('');
+}
+
+var breiten = (function () {
+  try { return JSON.parse(localStorage.getItem('pypad_online_breiten') || '{}'); } catch (e) { return {}; }
+})();
+
+function teilerInit() {
+  var mainEl = document.querySelector('main');
+  var leiste = mainEl.querySelector('.leiste');
+  var panes = mainEl.querySelectorAll('.pane');
+  var editorPane = panes[0], outPane = panes[1];
+  if (!leiste || !editorPane || !outPane) { return; }
+  function schmal() { return window.innerWidth <= 900; }
+  function anwenden() {
+    if (schmal()) { leiste.style.flex = ''; editorPane.style.flex = ''; outPane.style.flex = ''; return; }
+    var platz = Math.max(320, mainEl.getBoundingClientRect().width);
+    var lb = breiten.leiste || 220;
+    var eb = breiten.editor || Math.max(220, platz * 0.5);
+    lb = Math.max(120, Math.min(lb, platz - 320));
+    eb = Math.max(160, Math.min(eb, platz - lb - 160));
+    breiten.leiste = lb; breiten.editor = eb;
+    leiste.style.flex = '0 0 ' + lb + 'px';
+    editorPane.style.flex = '0 0 ' + eb + 'px';
+    outPane.style.flex = '1 1 0%';
+  }
+  function ziehen(teiler, vorher, schluessel) {
+    if (!teiler) { return; }
+    teiler.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      var r = teiler.getBoundingClientRect();
+      var quer = r.height > r.width;
+      var start = quer ? e.clientX : e.clientY;
+      var basis = quer ? vorher.getBoundingClientRect().width : vorher.getBoundingClientRect().height;
+      teiler.classList.add('zug');
+      document.body.style.cursor = quer ? 'col-resize' : 'row-resize';
+      document.body.style.userSelect = 'none';
+      function move(ev) {
+        var jetzt = quer ? ev.clientX : ev.clientY;
+        var neu = Math.max(120, basis + (jetzt - start));
+        if (!quer) { vorher.style.flex = '1 1 ' + neu + 'px'; return; }
+        var platz = mainEl.getBoundingClientRect().width;
+        neu = Math.min(neu, Math.max(160, platz - 200));
+        vorher.style.flex = '0 0 ' + neu + 'px';
+        breiten[schluessel] = neu;
+      }
+      function up() {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        teiler.classList.remove('zug');
+        try { localStorage.setItem('pypad_online_breiten', JSON.stringify(breiten)); } catch (err) { }
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  }
+  anwenden();
+  ziehen(elem('teilerLinks'), leiste, 'leiste');
+  ziehen(elem('teilerRechts'), editorPane, 'editor');
+  window.addEventListener('resize', anwenden);
 }
 
 function initEditor() {

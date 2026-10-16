@@ -126,6 +126,7 @@ Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem
 - Gleiches Git-Panel wie offline: Repo von GitHub laden, danach Status/Diff/Commit/Push/Pull im geladenen Ordner
 - **GitHub-Anmeldung** per Token (geprüft über die GitHub-API, serverseitig mit `chmod 600` je Benutzer) — damit funktionieren Push, Pull und private Repos
 - **Löschen** von Dateien und Ordnern direkt in der Liste (✕ mit Rückfrage); der Workspace selbst bleibt geschützt
+- **Fenster einstellbar:** Trenner zwischen Seitenleiste, Editor und Ausgabe lassen sich ziehen (Breiten werden im Browser gemerkt); bei schmalem Fenster wird gestapelt
 - Adressen werden **IPv4 zuerst** aufgeloest (vermeidet lange Haenger, wenn eine IPv6-Adresse vorhanden aber nicht erreichbar ist)
 - Optionaler **Internet-Zugriff** pro Lauf (Haekchen "Internet", Standard aus): Internet ja, eigenes Netz nein - Loopback, RFC1918, Tailnet, Link-Local und IPv6-Privat bleiben gesperrt (nftables filtert nur den Sandkasten-Benutzer). Einrichtung: `/srv/pypad/netz-setup/setup.sh` als root.
 
