@@ -22,6 +22,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    import pypad   # bewaehrte Bausteine (lint_code, explain_error, complete_words, RUNNER_SOURCE)
+except Exception:
+    pypad = None
+
 DATA = Path(os.environ.get("PYPAD_DATA", "/srv/pypad"))
 USERS_FILE = DATA / "users.json"
 SESSIONS_FILE = DATA / "sessions.json"
@@ -173,12 +179,18 @@ def run_code(user, code, stdin_text):
     script = lauf / "main.py"
     script.write_text(code, encoding="utf-8")
     os.chmod(script, 0o644)
+    vars_pfad = lauf / "vars.json"
+    runner = lauf / "_runner.py"
+    if pypad is not None:
+        runner.write_text(pypad.RUNNER_SOURCE, encoding="utf-8")
+        os.chmod(runner, 0o644)
+        befehl = ["sudo", "-n", WRAPPER, str(runner), str(script), str(vars_pfad)]
+    else:
+        befehl = ["sudo", "-n", WRAPPER, str(script)]
     start = time.time()
     try:
-        fertig = subprocess.run(
-            ["sudo", "-n", WRAPPER, str(script)],
-            input=(stdin_text or "").encode("utf-8"), capture_output=True,
-            timeout=TIMEOUT + 10)
+        fertig = subprocess.run(befehl, input=(stdin_text or "").encode("utf-8"),
+                                capture_output=True, timeout=TIMEOUT + 10)
         out = fertig.stdout.decode("utf-8", "replace")
         err = fertig.stderr.decode("utf-8", "replace")
         rc = fertig.returncode
@@ -186,19 +198,40 @@ def run_code(user, code, stdin_text):
         out, err, rc = "", "\n[PyPad] Zeitlimit erreicht - Programm beendet.\n", -1
     except Exception as exc:
         out, err, rc = "", str(exc), -1
-    finally:
-        shutil.rmtree(lauf, ignore_errors=True)
-    return {"stdout": out, "stderr": err, "returncode": rc, "ms": int((time.time() - start) * 1000)}
+
+    variablen = None
+    try:
+        if vars_pfad.exists():
+            variablen = json.loads(vars_pfad.read_text(encoding="utf-8"))
+    except Exception:
+        variablen = None
+
+    erklaerung = None
+    warnungen = None
+    if pypad is not None:
+        try:
+            erklaerung = pypad.explain_error(err, code)
+        except Exception:
+            erklaerung = None
+        try:
+            warnungen = pypad.lint_code(code)
+        except Exception:
+            warnungen = None
+
+    shutil.rmtree(lauf, ignore_errors=True)
+    return {"stdout": out, "stderr": err, "returncode": rc, "ms": int((time.time() - start) * 1000),
+            "vars": variablen, "explanation": erklaerung, "warnings": warnungen}
 
 
 def complete_words(code, prefix):
+    if pypad is not None:
+        try:
+            return pypad.complete_words(code, prefix)
+        except Exception:
+            pass
     import builtins
     import keyword
-    import ast
-    prefix = prefix or ""
-    if "." in prefix:
-        return []
-    low = prefix.lower()
+    low = (prefix or "").lower()
     basis = sorted(set(keyword.kwlist) | set(n for n in dir(builtins) if not n.startswith("_")))
     return [w for w in basis if w.lower().startswith(low)]
 
@@ -420,6 +453,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "leerer Code"}, 400)
                 return
             self._json(run_code(user, code, daten.get("stdin") or ""))
+            return
+
+        if pfad == "/api/check":
+            code = daten.get("code") or ""
+            warnungen = []
+            if pypad is not None:
+                try:
+                    warnungen = pypad.lint_code(code)
+                except Exception:
+                    warnungen = []
+            self._json({"warnings": warnungen})
             return
 
         if pfad == "/api/complete":
