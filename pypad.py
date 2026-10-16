@@ -912,6 +912,16 @@ class DebugRun:
         except OSError:
             return False
 
+    def write(self, text):
+        if self.done or self.proc.stdin is None:
+            return False
+        try:
+            self.proc.stdin.write(text.encode("utf-8"))
+            self.proc.stdin.flush()
+            return True
+        except (BrokenPipeError, ValueError, OSError):
+            return False
+
     def zustand(self, start):
         with self.lock:
             chunks = self.chunks[start:]
@@ -1081,6 +1091,16 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 start = 0
             self._json(lauf.zustand(max(0, start)))
+            return
+
+        if url.path == "/debug/input":
+            lauf = self._run_by_id(data.get("id"))
+            if not lauf or not isinstance(lauf, DebugRun):
+                self._json({"error": "unbekannte Lauf-ID"}, 404)
+                return
+            text = data.get("text")
+            text = "" if text is None else str(text)
+            self._json({"ok": lauf.write(text + "\n")})
             return
 
         if url.path == "/debug/befehl":

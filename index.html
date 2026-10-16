@@ -795,6 +795,8 @@ function debugStart() {
   dbgPanel.hidden = false;
   dbgZeile.textContent = 'startet ...';
   dbgVars.textContent = '';
+  liveEl.disabled = false;
+  sendBtn.disabled = false;
   fetch('/debug/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -841,6 +843,8 @@ function debugEnde(d) {
   debugTimer = null;
   if (debugMarker !== null) { editor.session.removeMarker(debugMarker); debugMarker = null; }
   debugRun = null;
+  liveEl.disabled = true;
+  sendBtn.disabled = true;
   dbgZeile.textContent = 'fertig (Exit ' + d.returncode + ')';
   appendChunk('dim', '\n[Debug beendet - Exit ' + d.returncode + ', ' + d.ms + ' ms]\n');
   outEl.scrollTop = outEl.scrollHeight;
@@ -996,11 +1000,19 @@ function finishRun(d) {
 }
 
 function sendLine() {
-  if (!currentRun) { return; }
+  if (!currentRun && !debugRun) { return; }
   var text = liveEl.value;
   liveEl.value = '';
   appendChunk('echo', '> ' + text + '\n');
   outEl.scrollTop = outEl.scrollHeight;
+  if (debugRun) {
+    fetch('/debug/input', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: debugRun, text: text })
+    }).catch(function () { });
+    return;
+  }
   fetch('/run/input', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
