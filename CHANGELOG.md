@@ -1,5 +1,14 @@
 # Änderungen
 
+## 1.3.0 - 2026-10-16
+
+**Online-Variante (PyPad Server)**
+- Login + Benutzerverwaltung (Passwoerter scrypt-gehasht)
+- Jeder Benutzer hat seinen eigenen Workspace
+- Code laeuft abgesichert: eigener System-User, kein Netzwerk, Limits
+- HTTPS mit echtem Zertifikat, Sitzungen, Login-Bremse
+- Dateizugriff nur im eigenen Workspace (Traversal blockiert)
+
 ## 1.2.0 — 2026-10-16
 
 **Server-Zugriff**

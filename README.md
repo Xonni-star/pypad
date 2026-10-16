@@ -103,6 +103,17 @@ Die Datei-Leiste hat ein **Server**-Feld. Steht dort ein Server-Name (Alias aus 
 - Befehle: `ls`, `cat`, `cat > pfad` — Pfade werden sauber quotiert, kein Shell-Injection.
 - `Cmd+S` schreibt die Datei direkt auf den Server zurück.
 
+## Online-Variante (PyPad Server)
+
+Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem Server
+(Datei pypad-server.py + online.html):
+
+- Login + Benutzerverwaltung (Admin legt Benutzer an; Passwoerter scrypt-gehasht)
+- Jeder Benutzer hat seinen eigenen Workspace
+- Code laeuft abgesichert: eigener System-User, kein Netzwerk, Speicher-/CPU-Limits
+- HTTPS mit echtem Zertifikat, Sitzungen (HttpOnly/Secure/SameSite), Login-Bremse
+- Dateizugriff nur im eigenen Workspace (Pfad-Traversal blockiert)
+
 ## App und Startskripte
 
 - **macOS:** `PyPad.command` (Terminal) oder die beiliegende App-Hülle `PyPad.app` fürs Dock.

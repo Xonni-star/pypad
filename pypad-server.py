@@ -1,0 +1,464 @@
+#!/usr/bin/env python3
+"""
+PyPad Server - abgesicherte Online-Variante mit Benutzerverwaltung.
+
+Laeuft auf dem Server, erreichbar ueber HTTPS. Jeder Nutzer hat seinen eigenen
+Workspace; ausgefuehrter Code laeuft abgesichert (eigener User, kein Netz, Limits).
+"""
+import hashlib
+import hmac
+import json
+import os
+import re
+import secrets
+import shutil
+import signal
+import ssl
+import subprocess
+import sys
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+DATA = Path(os.environ.get("PYPAD_DATA", "/srv/pypad"))
+USERS_FILE = DATA / "users.json"
+SESSIONS_FILE = DATA / "sessions.json"
+RUN_DIR = DATA / "run"
+WRAPPER = "/usr/local/bin/pypad-run"
+HOST = os.environ.get("PYPAD_HOST", "0.0.0.0")
+PORT = int(os.environ.get("PYPAD_PORT", "8443"))
+CERT = os.environ.get("PYPAD_CERT", str(DATA / "elitebook.taila52ac2.ts.net.crt"))
+KEY = os.environ.get("PYPAD_KEY", str(DATA / "elitebook.taila52ac2.ts.net.key"))
+STATIC = Path(__file__).resolve().parent
+TIMEOUT = int(os.environ.get("PYPAD_TIMEOUT", "20"))
+
+USERS_LOCK = threading.Lock()
+SESSIONS = {}
+SESSIONS_LOCK = threading.Lock()
+FAILED = {}
+FAILED_LOCK = threading.Lock()
+SESSION_TTL = 60 * 60 * 24 * 7   # 7 Tage
+
+
+def log(msg):
+    print(time.strftime("%Y-%m-%d %H:%M:%S  ") + msg, flush=True)
+
+
+# ---------- Benutzer ----------
+def users_load():
+    try:
+        d = json.loads(USERS_FILE.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def users_save(users):
+    tmp = USERS_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, USERS_FILE)
+    os.chmod(USERS_FILE, 0o600)
+
+
+def hash_pw(pw, salt=None):
+    salt = salt or secrets.token_hex(16)
+    h = hashlib.scrypt(pw.encode("utf-8"), salt=salt.encode("utf-8"), n=2 ** 14, r=8, p=1, dklen=64).hex()
+    return salt, h
+
+
+def verify_pw(pw, salt, h):
+    try:
+        return hmac.compare_digest(hash_pw(pw, salt)[1], h)
+    except Exception:
+        return False
+
+
+def user_dir(name):
+    return DATA / "users" / name
+
+
+def workspace(name):
+    d = user_dir(name) / "workspace"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def safe_path(name, pfad):
+    """Pfad innerhalb des Workspace des Nutzers aufloesen - sonst None."""
+    ws = workspace(name).resolve()
+    roh = (pfad or "").strip() or "."
+    p = (ws / roh).resolve()
+    try:
+        p.relative_to(ws)
+        return p
+    except ValueError:
+        return None
+
+
+# ---------- Sitzungen ----------
+def sessions_load():
+    global SESSIONS
+    try:
+        SESSIONS = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        SESSIONS = {}
+
+
+def sessions_save():
+    try:
+        tmp = SESSIONS_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(SESSIONS), encoding="utf-8")
+        os.replace(tmp, SESSIONS_FILE)
+        os.chmod(SESSIONS_FILE, 0o600)
+    except Exception:
+        pass
+
+
+def neue_sitzung(user):
+    token = secrets.token_urlsafe(32)
+    with SESSIONS_LOCK:
+        SESSIONS[token] = {"user": user, "bis": time.time() + SESSION_TTL}
+        sessions_save()
+    return token
+
+
+def sitzung_pruefen(token):
+    with SESSIONS_LOCK:
+        s = SESSIONS.get(token)
+        if not s:
+            return None
+        if s.get("bis", 0) < time.time():
+            SESSIONS.pop(token, None)
+            sessions_save()
+            return None
+        return s["user"]
+
+
+def sitzung_loeschen(token):
+    with SESSIONS_LOCK:
+        SESSIONS.pop(token, None)
+        sessions_save()
+
+
+def login_limit(ip):
+    with FAILED_LOCK:
+        jetzt = time.time()
+        zaehler, erste = FAILED.get(ip, (0, jetzt))
+        if jetzt - erste > 300:
+            zaehler, erste = 0, jetzt
+        FAILED[ip] = (zaehler, erste)
+        return zaehler >= 10
+
+
+def login_fehlschlag(ip):
+    with FAILED_LOCK:
+        zaehler, erste = FAILED.get(ip, (0, time.time()))
+        if time.time() - erste > 300:
+            zaehler, erste = 0, time.time()
+        FAILED[ip] = (zaehler + 1, erste)
+
+
+def login_erfolg(ip):
+    with FAILED_LOCK:
+        FAILED.pop(ip, None)
+
+
+# ---------- Code ausfuehren (Sandbox) ----------
+def run_code(user, code, stdin_text):
+    lauf = RUN_DIR / (user + "-" + secrets.token_hex(4))
+    lauf.mkdir(parents=True, exist_ok=True)
+    os.chmod(lauf, 0o777)
+    script = lauf / "main.py"
+    script.write_text(code, encoding="utf-8")
+    os.chmod(script, 0o644)
+    start = time.time()
+    try:
+        fertig = subprocess.run(
+            ["sudo", "-n", WRAPPER, str(script)],
+            input=(stdin_text or "").encode("utf-8"), capture_output=True,
+            timeout=TIMEOUT + 10)
+        out = fertig.stdout.decode("utf-8", "replace")
+        err = fertig.stderr.decode("utf-8", "replace")
+        rc = fertig.returncode
+    except subprocess.TimeoutExpired:
+        out, err, rc = "", "\n[PyPad] Zeitlimit erreicht - Programm beendet.\n", -1
+    except Exception as exc:
+        out, err, rc = "", str(exc), -1
+    finally:
+        shutil.rmtree(lauf, ignore_errors=True)
+    return {"stdout": out, "stderr": err, "returncode": rc, "ms": int((time.time() - start) * 1000)}
+
+
+def complete_words(code, prefix):
+    import builtins
+    import keyword
+    import ast
+    prefix = prefix or ""
+    if "." in prefix:
+        return []
+    low = prefix.lower()
+    basis = sorted(set(keyword.kwlist) | set(n for n in dir(builtins) if not n.startswith("_")))
+    return [w for w in basis if w.lower().startswith(low)]
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "PyPadServer/1.0"
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _senden(self, status, body, ctype="application/json; charset=utf-8", cookie=None):
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        self.send_response(status)
+        if cookie is not None:
+            self.send_header("Set-Cookie", cookie)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.close_connection = True
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, obj, status=200, cookie=None):
+        self._senden(status, json.dumps(obj, ensure_ascii=False), cookie=cookie)
+
+    def _body(self):
+        try:
+            laenge = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return {}
+        if laenge <= 0:
+            return {}
+        try:
+            return json.loads(self.rfile.read(laenge).decode("utf-8"))
+        except Exception:
+            return {}
+
+    def _cookie(self):
+        c = self.headers.get("Cookie") or ""
+        for teil in c.split(";"):
+            k, _, v = teil.strip().partition("=")
+            if k == "session":
+                return v
+        return None
+
+    def _user(self):
+        token = self._cookie()
+        return sitzung_pruefen(token) if token else None
+
+    def _cookie_string(self, token):
+        return "session=" + token + "; HttpOnly; Secure; SameSite=Strict; Path=/"
+
+    def _ip(self):
+        return self.client_address[0]
+
+    def do_GET(self):
+        url = urlparse(self.path)
+        pfad = url.path
+
+        if pfad in ("/", "/online.html"):
+            datei = STATIC / "online.html"
+            self._senden(200, datei.read_text(encoding="utf-8") if datei.exists() else "online.html fehlt",
+                         "text/html; charset=utf-8")
+            return
+        if pfad.startswith("/vendor/"):
+            name = pfad[len("/vendor/"):]
+            if not re.match(r"^[A-Za-z0-9_.-]{1,64}$", name):
+                self._senden(404, "nf", "text/plain")
+                return
+            datei = (STATIC / "vendor" / name)
+            if not datei.is_file():
+                self._senden(404, "nf", "text/plain")
+                return
+            ctype = "application/javascript; charset=utf-8" if name.endswith(".js") else "text/plain"
+            self._senden(200, datei.read_bytes(), ctype)
+            return
+
+        user = self._user()
+        if not user:
+            self._json({"error": "nicht angemeldet"}, 401)
+            return
+
+        if pfad == "/api/whoami":
+            nutzer = users_load().get(user, {})
+            self._json({"user": user, "admin": bool(nutzer.get("admin"))})
+            return
+        if pfad == "/api/info":
+            self._json({"user": user, "version": sys.version.split()[0], "workspace": str(workspace(user))})
+            return
+        if pfad == "/api/users":
+            if not users_load().get(user, {}).get("admin"):
+                self._json({"error": "kein Admin"}, 403)
+                return
+            self._json({"users": [{"name": n, "admin": bool(v.get("admin"))}
+                                  for n, v in users_load().items()]})
+            return
+        if pfad == "/api/files":
+            q = parse_qs(url.query)
+            ziel = safe_path(user, (q.get("pfad") or [""])[0])
+            if ziel is None:
+                self._json({"error": "Pfad nicht erlaubt"}, 400)
+                return
+            if not ziel.is_dir():
+                self._json({"error": "kein Ordner"}, 400)
+                return
+            endungen = {".py", ".js", ".mjs", ".html", ".htm", ".css", ".json", ".md", ".markdown",
+                        ".txt", ".sh", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf"}
+            dateien = sorted(p.name for p in ziel.iterdir() if p.is_file() and p.suffix.lower() in endungen)
+            self._json({"pfad": str(ziel), "dateien": dateien})
+            return
+        if pfad == "/api/datei":
+            q = parse_qs(url.query)
+            ziel = safe_path(user, (q.get("pfad") or [""])[0])
+            if ziel is None or not ziel.is_file():
+                self._json({"error": "Datei nicht gefunden"}, 404)
+                return
+            self._json({"pfad": str(ziel), "code": ziel.read_text(encoding="utf-8", errors="replace")})
+            return
+
+        self._senden(404, "nf", "text/plain")
+
+    def do_POST(self):
+        url = urlparse(self.path)
+        pfad = url.path
+        daten = self._body()
+
+        if pfad == "/api/login":
+            ip = self._ip()
+            if login_limit(ip):
+                self._json({"error": "zu viele Fehlversuche - bitte kurz warten"}, 429)
+                return
+            name = (daten.get("user") or "").strip()
+            pw = daten.get("pass") or ""
+            nutzer = users_load().get(name)
+            if not nutzer or not verify_pw(pw, nutzer.get("salt", ""), nutzer.get("hash", "")):
+                login_fehlschlag(ip)
+                self._json({"error": "Benutzer oder Passwort falsch"}, 401)
+                return
+            login_erfolg(ip)
+            token = neue_sitzung(name)
+            self._json({"ok": True, "user": name, "admin": bool(nutzer.get("admin"))},
+                       cookie=self._cookie_string(token))
+            return
+
+        if pfad == "/api/logout":
+            token = self._cookie()
+            if token:
+                sitzung_loeschen(token)
+            self._json({"ok": True}, cookie=self._cookie_string(""))
+            return
+
+        user = self._user()
+        if not user:
+            self._json({"error": "nicht angemeldet"}, 401)
+            return
+
+        if pfad == "/api/user":
+            if not users_load().get(user, {}).get("admin"):
+                self._json({"error": "kein Admin"}, 403)
+                return
+            name = (daten.get("name") or "").strip()
+            pw = daten.get("pass") or ""
+            if not re.match(r"^[A-Za-z0-9_.-]{1,40}$", name):
+                self._json({"error": "ungueltiger Benutzername"}, 400)
+                return
+            if len(pw) < 8:
+                self._json({"error": "Passwort muss mindestens 8 Zeichen haben"}, 400)
+                return
+            with USERS_LOCK:
+                users = users_load()
+                ist_neu = name not in users
+                salt, h = hash_pw(pw)
+                users[name] = {"salt": salt, "hash": h,
+                               "admin": bool(daten.get("admin")), "angelegt": time.strftime("%Y-%m-%d")}
+                users_save(users)
+                workspace(name)
+            log("Benutzer angelegt/aktualisiert: " + name + (" (neu)" if ist_neu else ""))
+            self._json({"ok": True, "name": name, "neu": ist_neu})
+            return
+
+        if pfad == "/api/user-delete":
+            if not users_load().get(user, {}).get("admin"):
+                self._json({"error": "kein Admin"}, 403)
+                return
+            name = (daten.get("name") or "").strip()
+            if name == user:
+                self._json({"error": "eigenen Account nicht loeschen"}, 400)
+                return
+            with USERS_LOCK:
+                users = users_load()
+                if name not in users:
+                    self._json({"error": "unbekannt"}, 404)
+                    return
+                del users[name]
+                users_save(users)
+            self._json({"ok": True})
+            return
+
+        if pfad == "/api/datei":
+            ziel = safe_path(user, daten.get("pfad"))
+            if ziel is None:
+                self._json({"error": "Pfad nicht erlaubt"}, 400)
+                return
+            code = daten.get("code")
+            if code is None:
+                self._json({"error": "kein Code"}, 400)
+                return
+            ziel.parent.mkdir(parents=True, exist_ok=True)
+            ziel.write_text(code, encoding="utf-8")
+            self._json({"gespeichert": str(ziel)})
+            return
+
+        if pfad == "/api/run":
+            code = daten.get("code") or ""
+            if not code.strip():
+                self._json({"error": "leerer Code"}, 400)
+                return
+            self._json(run_code(user, code, daten.get("stdin") or ""))
+            return
+
+        if pfad == "/api/complete":
+            self._json({"words": complete_words(daten.get("code") or "", daten.get("prefix") or "")})
+            return
+
+        self._senden(404, "nf", "text/plain")
+
+
+def main():
+    DATA.mkdir(parents=True, exist_ok=True)
+    RUN_DIR.mkdir(parents=True, exist_ok=True)
+    os.chmod(RUN_DIR, 0o777)
+    if not USERS_FILE.exists():
+        users_save({})
+    sessions_load()
+
+    # Erster Admin, falls noch keiner da ist
+    users = users_load()
+    if not users:
+        admin_pw = os.environ.get("PYPAD_ADMIN_PW") or secrets.token_urlsafe(12)
+        salt, h = hash_pw(admin_pw)
+        users["admin"] = {"salt": salt, "hash": h, "admin": True, "angelegt": time.strftime("%Y-%m-%d")}
+        users_save(users)
+        log("Erster Admin angelegt: 'admin'  (Passwort gesetzt)")
+
+    httpd = ThreadingHTTPServer((HOST, PORT), Handler)
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(CERT, KEY)
+    httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+    log("PyPad-Server lauscht auf https://" + HOST + ":" + str(PORT) + "/")
+    log("Zertifikat: " + CERT)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        log("beendet")
+    finally:
+        httpd.server_close()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PyPad Server</title>
+<style>
+:root{--bg:#0f1420;--bg2:#161d2e;--fg:#e6ecff;--dim:#8a94b0;--acc:#3ddc84;--err:#ff6b6b;--line:#252d42}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+.login{max-width:340px;margin:12vh auto 0;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:12px}
+.login h1{margin:0 0 6px;font-size:22px}
+.login b{color:var(--acc)}
+input,button,select{background:#0c1120;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:9px 12px;font-size:14px;outline:none}
+button{cursor:pointer}
+button:hover{background:#28334d}
+button.run{background:var(--acc);color:#06210f;font-weight:700;border-color:var(--acc)}
+button.mini{padding:4px 9px;font-size:12px}
+.err{color:var(--err);min-height:18px;font-size:13px}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--line)}
+.brand{font-weight:700}
+.brand b{color:var(--acc)}
+.hint{color:var(--dim);font-size:12px}
+.spacer{flex:1}
+#usersPanel{background:#131a29;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#usersPanel .ul{flex:1;min-width:180px}
+main{flex:1;display:flex;min-height:0}
+.leiste{width:200px;min-width:160px;background:#0e1524;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.leiste .df{padding:8px;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);word-break:break-all}
+#files{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
+#files li{padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#files li:hover{background:#1b2338}
+.pane{display:flex;flex-direction:column;min-width:0;flex:1}
+.pane+.pane{border-left:1px solid var(--line)}
+.head{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;color:var(--dim);background:#131a29;border-bottom:1px solid var(--line)}
+#editor{flex:1;min-height:0}
+pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:13px/1.6 ui-monospace,Menlo,monospace;background:#0c1120}
+.df{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#0e1524;border-top:1px solid var(--line)}
+.df input{flex:1}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+  <h1>Py<b>Pad</b> Server</h1>
+  <input id="lu" placeholder="Benutzer" autocomplete="username">
+  <input id="lp" type="password" placeholder="Passwort" autocomplete="current-password">
+  <button id="lb" class="run">Anmelden</button>
+  <div id="lerr" class="err"></div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <span class="brand">Py<b>Pad</b> Server</span>
+    <span id="wer" class="hint"></span>
+    <span class="spacer"></span>
+    <button id="btnUsers" class="mini" hidden>&#128101; Benutzer</button>
+    <button id="btnLogout">Abmelden</button>
+  </header>
+  <div id="usersPanel" hidden>
+    <b class="hint">Benutzer verwalten</b>
+    <input id="uName" placeholder="Name">
+    <input id="uPass" type="password" placeholder="Passwort (min. 8)">
+    <label class="hint"><input type="checkbox" id="uAdmin"> Admin</label>
+    <button id="uSave" class="mini">Anlegen/Aendern</button>
+    <div id="uListe" class="ul"></div>
+  </div>
+  <main>
+    <aside class="leiste">
+      <div class="df">Workspace:<br><span id="ws">…</span></div>
+      <ul id="files"></ul>
+    </aside>
+    <section class="pane">
+      <div class="head"><span>Code</span><span id="fname" class="hint"></span><span class="spacer"></span><button id="btnSave" class="mini">Speichern</button></div>
+      <div id="editor"></div>
+    </section>
+    <section class="pane">
+      <div class="head"><span>Ausgabe</span><span id="status" class="hint"></span><span class="spacer"></span><button id="btnRun" class="mini run">&#9654; Ausfuehren</button></div>
+      <pre id="out"></pre>
+      <div class="df">stdin: <input id="stdin" placeholder="Eingabe fuer input()"></div>
+    </section>
+  </main>
+</div>
+
+<script src="vendor/ace.js"></script>
+<script src="vendor/mode-python.js"></script>
+<script src="vendor/theme-tomorrow_night.js"></script>
+<script src="vendor/ext-language_tools.js"></script>
+<script>
+var editor = null, aktuellerPfad = null, binAdmin = false;
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function post(pfad, daten) {
+  return fetch(pfad, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(daten||{}) });
+}
+function get(pfad) { return fetch(pfad); }
+
+function zeigeLogin() { document.getElementById('login').hidden = false; document.getElementById('app').hidden = true; }
+function zeigeApp(who) {
+  document.getElementById('login').hidden = true;
+  document.getElementById('app').hidden = false;
+  document.getElementById('wer').textContent = who.user + (who.admin ? ' (Admin)' : '');
+  binAdmin = who.admin;
+  document.getElementById('btnUsers').hidden = !who.admin;
+  initEditor();
+  ladeDateien('');
+}
+
+function initEditor() {
+  if (editor) return;
+  editor = ace.edit('editor');
+  editor.setTheme('ace/theme/tomorrow_night');
+  editor.session.setMode('ace/mode/python');
+  editor.setOptions({ fontSize:'13px', showPrintMargin:false, useSoftTabs:true, tabSize:4, enableBasicAutocompletion:true, enableLiveAutocompletion:true });
+  editor.commands.addCommand({ name:'run', bindKey:{win:'Ctrl-Enter',mac:'Command-Enter'}, exec:function(){ ausfuehren(); } });
+}
+
+async function anmelden() {
+  var r = await post('/api/login', { user: document.getElementById('lu').value.trim(), pass: document.getElementById('lp').value });
+  var d = await r.json();
+  if (d.ok) { document.getElementById('lerr').textContent=''; boot(); }
+  else { document.getElementById('lerr').textContent = d.error || 'Anmeldung fehlgeschlagen'; }
+}
+
+async function boot() {
+  var r = await get('/api/whoami');
+  if (r.status === 401) { zeigeLogin(); return; }
+  var who = await r.json();
+  zeigeApp(who);
+  if (who.admin) ladeNutzer();
+}
+
+async function ladeDateien(pfad) {
+  var r = await get('/api/files?pfad=' + encodeURIComponent(pfad||''));
+  var d = await r.json();
+  document.getElementById('ws').textContent = d.workspace ? '' : '';
+  var ul = document.getElementById('files');
+  ul.innerHTML = '';
+  (d.dateien||[]).forEach(function(n){
+    var li = document.createElement('li');
+    li.textContent = n;
+    li.setAttribute('data-pfad', (pfad ? pfad + '/' : '') + n);
+    ul.appendChild(li);
+  });
+  // Workspace-Pfad aus /api/info holen
+  get('/api/info').then(function(r){return r.json();}).then(function(i){ document.getElementById('ws').textContent = i.workspace; });
+}
+
+async function oeffnen(pfad) {
+  var r = await get('/api/datei?pfad=' + encodeURIComponent(pfad));
+  var d = await r.json();
+  if (d.code !== undefined) {
+    aktuellerPfad = pfad;
+    editor.setValue(d.code, -1);
+    document.getElementById('fname').textContent = pfad;
+  }
+}
+
+async function speichern() {
+  if (!aktuellerPfad) {
+    var name = prompt('Dateiname (z.B. mein_script.py):');
+    if (!name) return;
+    aktuellerPfad = name;
+  }
+  var r = await post('/api/datei', { pfad: aktuellerPfad, code: editor.getValue() });
+  var d = await r.json();
+  document.getElementById('fname').textContent = d.gespeichert ? ('gespeichert: ' + aktuellerPfad) : ('Fehler: ' + (d.error||'?'));
+  ladeDateien('');
+}
+
+async function ausfuehren() {
+  var out = document.getElementById('out');
+  out.textContent = '';
+  document.getElementById('status').textContent = 'laeuft ...';
+  var t0 = Date.now();
+  var r = await post('/api/run', { code: editor.getValue(), stdin: document.getElementById('stdin').value });
+  var d = await r.json();
+  var text = d.stdout || '';
+  if (d.stderr) text += (text ? '
+' : '') + d.stderr;
+  out.textContent = text || '(keine Ausgabe)';
+  document.getElementById('status').textContent = 'Exit ' + d.returncode + ' · ' + d.ms + ' ms';
+}
+
+async function ladeNutzer() {
+  var r = await get('/api/users');
+  var d = await r.json();
+  var el = document.getElementById('uListe');
+  el.innerHTML = '';
+  (d.users||[]).forEach(function(u){
+    var span = document.createElement('span');
+    span.className = 'hint';
+    span.style.marginRight = '10px';
+    span.innerHTML = esc(u.name) + (u.admin ? ' (Admin)' : '') + ' <a href="#" data-del="'+esc(u.name)+'" style="color:var(--err)">×</a>';
+    el.appendChild(span);
+  });
+}
+
+async function nutzerSpeichern() {
+  var name = document.getElementById('uName').value.trim();
+  var pass = document.getElementById('uPass').value;
+  var admin = document.getElementById('uAdmin').checked;
+  var r = await post('/api/user', { name: name, pass: pass, admin: admin });
+  var d = await r.json();
+  if (d.ok) { document.getElementById('uName').value=''; document.getElementById('uPass').value=''; ladeNutzer(); }
+  else { alert(d.error || 'Fehler'); }
+}
+
+document.getElementById('lb').addEventListener('click', anmelden);
+document.getElementById('lp').addEventListener('keydown', function(e){ if(e.key==='Enter') anmelden(); });
+document.getElementById('btnLogout').addEventListener('click', function(){ post('/api/logout').then(function(){ location.reload(); }); });
+document.getElementById('btnSave').addEventListener('click', speichern);
+document.getElementById('btnRun').addEventListener('click', ausfuehren);
+document.getElementById('btnUsers').addEventListener('click', function(){ var p=document.getElementById('usersPanel'); p.hidden=!p.hidden; });
+document.getElementById('uSave').addEventListener('click', nutzerSpeichern);
+document.getElementById('files').addEventListener('click', function(e){ var t=e.target; if(t.getAttribute('data-pfad')) oeffnen(t.getAttribute('data-pfad')); });
+document.getElementById('uListe').addEventListener('click', function(e){
+  var t = e.target;
+  if (t.getAttribute && t.getAttribute('data-del')) {
+    if (confirm('Benutzer ' + t.getAttribute('data-del') + ' loeschen?')) {
+      post('/api/user-delete', { name: t.getAttribute('data-del') }).then(function(){ ladeNutzer(); });
+    }
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
