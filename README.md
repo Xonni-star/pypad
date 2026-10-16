@@ -56,6 +56,7 @@ ausgeführt wird dein Code mit dem installierten Python.
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+- **Internet im ausgefuehrten Code:** `urllib`/`requests` funktionieren direkt; fehlt dem Python ein Zertifikatsbuendel, reicht PyPad `SSL_CERT_FILE`/`REQUESTS_CA_BUNDLE` automatisch nach (macOS-Symptom `CERTIFICATE_VERIFY_FAILED`)
 - **Code von GitHub laden:** im Git-Panel eine GitHub-Adresse eintippen (`https://github.com/user/repo` oder kurz `user/repo`) und **Laden** — das Repo wird in den Ordner geklont. Danach zeigen Status/Commit/Push/Pull auf das geladene Repo. Nur `github.com` wird angenommen, geklont wird flach (`--depth 1`).
 - **Mehrere Sprachen:** Syntax-Highlighting für JavaScript, HTML, CSS, JSON und Markdown (Ausführen bleibt Python)
 - **Markdown-Vorschau**, **Gehe-zu-Definition** (F3), **zuletzt geöffnete Dateien** und **frei verschiebbare Fenstergrößen** (Trenner ziehen)

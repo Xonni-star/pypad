@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.7.0 - 2026-10-16
+
+**HTTPS aus dem ausgefuehrten Code heraus**
+- Fehlt dem Python ein Zertifikatsbuendel, reicht PyPad dem Programm automatisch SSL_CERT_FILE / REQUESTS_CA_BUNDLE weiter (typisch macOS mit python.org-Installation: "CERTIFICATE_VERIFY_FAILED")
+- Eine bereits gesetzte Einstellung wird nie ueberschrieben; gesucht werden certifi, /etc/ssl/cert.pem und die ueblichen Linux-Buendel
+- Hintergrund: das betraf HTTPS auch ausserhalb von PyPad - jetzt laufen urllib und requests direkt
+
 ## 1.6.1 - 2026-10-16
 
 **Bugfix: Knoepfe im Git-Panel**

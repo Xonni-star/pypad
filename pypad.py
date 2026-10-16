@@ -244,6 +244,46 @@ def git_ausfuehren(pfad, *args):
         return {"error": str(exc)}
 
 
+def ca_bundle_finden():
+    """Pfad zu einem CA-Buendel - falls dem Python keine Zertifikate bekannt sind.
+
+    Typisch auf macOS (python.org-Installation): HTTPS scheitert mit
+    CERTIFICATE_VERIFY_FAILED. Wir setzen dann SSL_CERT_FILE fuer das
+    ausgefuehrte Programm, ohne eine vorhandene Einstellung zu ueberschreiben.
+    """
+    if os.environ.get("SSL_CERT_FILE"):
+        return None
+    kandidaten = []
+    try:
+        import certifi
+        kandidaten.append(certifi.where())
+    except Exception:
+        pass
+    kandidaten += ["/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt",
+                   "/etc/pki/tls/certs/ca-bundle.crt"]
+    for pfad in kandidaten:
+        try:
+            if pfad and os.path.isfile(pfad):
+                return pfad
+        except Exception:
+            continue
+    return None
+
+
+def umgebung():
+    """Umgebung fuer den ausgefuehrten Code (inkl. CA-Buendel fuer HTTPS)."""
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONUNBUFFERED"] = "1"
+    bundle = ca_bundle_finden()
+    if bundle:
+        env.setdefault("SSL_CERT_FILE", bundle)
+        env.setdefault("REQUESTS_CA_BUNDLE", bundle)
+        env.setdefault("CURL_CA_BUNDLE", bundle)
+    return env
+
+
 def github_pruefen(text):
     """Eingabe (GitHub-Adresse oder "user/repo") -> (owner, repo) oder None."""
     text = (text or "").strip()
@@ -956,10 +996,7 @@ class Run:
                     os.chmod(_p, 0o644)
                 except OSError:
                     pass
-        env = dict(os.environ)
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
-        env["PYTHONUNBUFFERED"] = "1"
+        env = umgebung()
         env["MPLBACKEND"] = "Agg"
         start_kwargs = {}
         if os.name == "posix":
@@ -1091,10 +1128,7 @@ class DebugRun:
         self.state_path = base / "state.json"
         self.command_path = base / "command.txt"
         self.fertig_path = base / "fertig.txt"
-        env = dict(os.environ)
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
-        env["PYTHONUNBUFFERED"] = "1"
+        env = umgebung()
         kwargs = {}
         if os.name == "posix":
             kwargs["start_new_session"] = True
