@@ -244,6 +244,33 @@ def git_ausfuehren(pfad, *args):
         return {"error": str(exc)}
 
 
+NETZ_HELFER = "\n".join([
+    '"""PyPad-Hilfe fuer ausgefuehrten Code.',
+    '',
+    'Wird dem Runner vorangestellt, laeuft also vor dem eigenen Code.',
+    'Zweck: Adressen mit IPv4 zuerst aufloesen - sonst laufen Verbindungen auf Servern',
+    'ohne funktionierendes IPv6 erst in zwei 20-Sekunden-Timeouts (HTTPS braucht 40 s).',
+    'IPv6 bleibt als Rueckfall erhalten.',
+    '"""',
+    'try:',
+    '    import socket as _s',
+    '',
+    '    _orig = _s.getaddrinfo',
+    '',
+    '    def _v4_zuerst(host, port, family=0, type=0, proto=0, flags=0):',
+    '        ergebnis = _orig(host, port, family, type, proto, flags)',
+    '        v4 = [a for a in ergebnis if a[0] == _s.AF_INET]',
+    '        if v4 and len(v4) != len(ergebnis):',
+    '            return v4 + [a for a in ergebnis if a[0] != _s.AF_INET]',
+    '        return ergebnis',
+    '',
+    '    _s.getaddrinfo = _v4_zuerst',
+    'except Exception:',
+    '    pass',
+    '',
+])
+
+
 def ca_bundle_finden():
     """Pfad zu einem CA-Buendel - falls dem Python keine Zertifikate bekannt sind.
 
@@ -988,7 +1015,7 @@ class Run:
         script = Path(self.tmp.name) / "main.py"
         script.write_text(code, encoding="utf-8")
         runner = Path(self.tmp.name) / "_pypad_runner.py"
-        runner.write_text(RUNNER_SOURCE, encoding="utf-8")
+        runner.write_text(NETZ_HELFER + RUNNER_SOURCE, encoding="utf-8")
         self.vars_path = Path(self.tmp.name) / "_pypad_vars.json"
         if tmp_parent:
             for _p in (script, runner):
@@ -1124,7 +1151,7 @@ class DebugRun:
         script = base / "main.py"
         script.write_text(code, encoding="utf-8")
         runner = base / "_pypad_debug.py"
-        runner.write_text(DEBUG_RUNNER_SOURCE, encoding="utf-8")
+        runner.write_text(NETZ_HELFER + DEBUG_RUNNER_SOURCE, encoding="utf-8")
         self.state_path = base / "state.json"
         self.command_path = base / "command.txt"
         self.fertig_path = base / "fertig.txt"

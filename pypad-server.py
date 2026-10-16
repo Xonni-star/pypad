@@ -239,10 +239,21 @@ def complete_words(code, prefix):
 LAEUFE = {}
 LAEUFE_LOCK = threading.Lock()
 SANDBOX = ["sudo", "-n", WRAPPER]
+WRAPPER_NET = os.environ.get("PYPAD_WRAPPER_NET", "/usr/local/bin/pypad-run-net")
+SANDBOX_NET = ["sudo", "-n", WRAPPER_NET]
 
 
-def neuer_lauf(code, stdin_text):
-    lauf = pypad.Run(code, stdin_text, basis=SANDBOX, tmp_parent=RUN_DIR, cwd=RUN_DIR)
+def netz_verfuegbar():
+    """Gibt es den Sandkasten MIT Netz (Wrapper + Firewall eingerichtet)?"""
+    try:
+        return os.path.isfile(WRAPPER_NET) and os.access(WRAPPER_NET, os.X_OK)
+    except OSError:
+        return False
+
+
+def neuer_lauf(code, stdin_text, netz=False):
+    basis = SANDBOX_NET if (netz and netz_verfuegbar()) else SANDBOX
+    lauf = pypad.Run(code, stdin_text, basis=basis, tmp_parent=RUN_DIR, cwd=RUN_DIR)
     with LAEUFE_LOCK:
         LAEUFE[lauf.id] = lauf
         if len(LAEUFE) > 40:
@@ -349,7 +360,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"user": user, "admin": bool(nutzer.get("admin"))})
             return
         if pfad == "/api/info":
-            self._json({"user": user, "version": sys.version.split()[0], "workspace": str(workspace(user))})
+            self._json({"user": user, "version": sys.version.split()[0], "workspace": str(workspace(user)),
+                        "netz": netz_verfuegbar()})
             return
         if pfad == "/api/users":
             if not users_load().get(user, {}).get("admin"):
@@ -513,7 +525,13 @@ class Handler(BaseHTTPRequestHandler):
             if pypad is None:
                 self._json({"error": "Runner nicht verfuegbar"}, 500)
                 return
-            lauf = neuer_lauf(code, daten.get("stdin") or "") if pfad == "/api/run/start" else neuer_debug(code)
+            if pfad == "/api/run/start":
+                if daten.get("netz") and not netz_verfuegbar():
+                    self._json({"error": "Netzwerk-Modus ist auf diesem Server nicht eingerichtet."}, 400)
+                    return
+                lauf = neuer_lauf(code, daten.get("stdin") or "", netz=bool(daten.get("netz")))
+            else:
+                lauf = neuer_debug(code)
             self._json({"id": lauf.id})
             return
 

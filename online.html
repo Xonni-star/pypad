@@ -24,6 +24,8 @@ header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var
 .brand{font-weight:700}
 .brand b{color:var(--acc)}
 .hint{color:var(--dim);font-size:12px}
+#netzLabel{display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap}
+#netzLabel input{width:auto;padding:0;margin:0}
 .spacer{flex:1}
 .setwrap{position:relative}
 .set-panel{position:absolute;top:34px;right:0;z-index:50;background:#161d2e;border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:200px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -124,6 +126,7 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
     </section>
     <section class="pane">
       <div class="head"><span>Ausgabe</span><span id="status" class="hint"></span><span class="spacer"></span>
+        <label id="netzLabel" class="hint" hidden title="Internet fuer dieses Programm erlauben - dein LAN und der Server bleiben gesperrt"><input type="checkbox" id="netz"> Internet</label>
         <button id="btnStop" class="mini" disabled>&#9632; Stopp</button>
         <button id="btnDebug" class="mini">&#128027; Debug</button>
         <button id="btnRun" class="mini run">&#9654; Ausfuehren</button></div>
@@ -264,6 +267,7 @@ async function ladeDateien(pfad) {
   }
   var i = await (await get('/api/info')).json();
   elem('ws').textContent = i.workspace + (pfad ? ' / ' + pfad : '');
+  elem('netzLabel').hidden = !i.netz;
   gitLaden();
 }
 
@@ -393,7 +397,9 @@ async function ausfuehren() {
     var cd = await (await post('/api/check', { code: editor.getValue() })).json();
     applyWarnings(cd.warnings || []);
   } catch (e) { }
-  var d = await (await post('/api/run/start', { code: editor.getValue(), stdin: elem('stdin').value })).json();
+  var mitNetz = !!(elem('netz') && !elem('netzLabel').hidden && elem('netz').checked);
+  if (mitNetz) { appendChunk('dim', 'Internet: an (LAN und Server bleiben gesperrt)' + nl()); }
+  var d = await (await post('/api/run/start', { code: editor.getValue(), stdin: elem('stdin').value, netz: mitNetz })).json();
   if (!d.id) { appendChunk('err', 'Start fehlgeschlagen: ' + (d.error || '')); return; }
   laufId = d.id;
   laufFrom = 0;

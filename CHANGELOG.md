@@ -1,5 +1,16 @@
 # Änderungen
 
+## 1.8.0 - 2026-10-16
+
+**Online-Variante: optionaler Internet-Zugriff im Sandkasten**
+- Haekchen "Internet" in der Ausfuehrungsleiste (nur sichtbar, wenn der Server dafuer eingerichtet ist; Standard: aus)
+- Mit Haekchen darf das Programm ins Internet - aber nicht ins eigene Netz: Loopback, RFC1918 (10/8, 172.16/12, 192.168/16), Tailnet (100.64/10), Link-Local und IPv6-Privat sind gesperrt, Mailports ebenfalls. Die Regeln filtern nur Pakete des Sandkasten-Benutzers pypadrun.
+- Namensauflösung laeuft ueber den lokalen Resolver (127.0.0.53); ohne Haekchen bleibt der Sandkasten komplett ohne Netz
+- Server meldet die Verfuegbarkeit ueber /api/info und lehnt netz-Laeufe ohne eingerichteten Wrapper mit klarer Meldung ab
+- Einrichtung auf dem Server: /srv/pypad/netz-setup/setup.sh (Firewall zuerst und geprueft, danach Wrapper + sudoers)
+- Adressen werden mit **IPv4 zuerst** aufgeloest: der Server hat eine nicht funktionierende IPv6-Adresse, dadurch lief jede Verbindung erst in zwei 20-Sekunden-Timeouts - HTTPS brauchte 40 s, jetzt 0,1 s (gilt offline und im Sandkasten, IPv6 bleibt als Rueckfall)
+- Hinweis: der Sandkasten laeuft ueber sudo mit env_reset - eigene Umgebungsvariablen erreichen ihn nicht, dort gilt der System-Zertifikatsspeicher
+
 ## 1.7.0 - 2026-10-16
 
 **HTTPS aus dem ausgefuehrten Code heraus**

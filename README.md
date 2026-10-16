@@ -116,6 +116,8 @@ Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem
 - HTTPS mit echtem Zertifikat, Sitzungen (HttpOnly/Secure/SameSite), Login-Bremse
 - Dateizugriff nur im eigenen Workspace (Pfad-Traversal blockiert)
 - Gleiches Git-Panel wie offline: Repo von GitHub laden, danach Status/Diff/Commit/Push/Pull im geladenen Ordner
+- Adressen werden **IPv4 zuerst** aufgeloest (vermeidet lange Haenger, wenn eine IPv6-Adresse vorhanden aber nicht erreichbar ist)
+- Optionaler **Internet-Zugriff** pro Lauf (Haekchen "Internet", Standard aus): Internet ja, eigenes Netz nein - Loopback, RFC1918, Tailnet, Link-Local und IPv6-Privat bleiben gesperrt (nftables filtert nur den Sandkasten-Benutzer). Einrichtung: `/srv/pypad/netz-setup/setup.sh` als root.
 
 ## App und Startskripte
 
