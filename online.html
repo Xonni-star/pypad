@@ -80,6 +80,8 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
 .df button,.head button{flex-shrink:0;white-space:nowrap}
 #gitBranch,#wer{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .chev{color:var(--acc);font:13px ui-monospace,Menlo,monospace}
+.html-vorschau{flex:1;min-height:0;background:#fff}
+.html-vorschau iframe{display:block;width:100%;height:100%;border:0;background:#fff}
 </style>
 </head>
 <body>
@@ -137,11 +139,13 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
     <div class="teiler" id="teilerRechts"></div>
     <section class="pane">
       <div class="head"><span>Ausgabe</span><span id="status" class="hint"></span><span class="spacer"></span>
+        <button id="btnVorschau" class="mini" hidden title="HTML-Live-Vorschau">&#128065;</button>
         <label id="netzLabel" class="hint" hidden title="Internet fuer dieses Programm erlauben - dein LAN und der Server bleiben gesperrt"><input type="checkbox" id="netz"> Internet</label>
         <button id="btnStop" class="mini" disabled>&#9632; Stopp</button>
         <button id="btnDebug" class="mini">&#128027; Debug</button>
         <button id="btnRun" class="mini run">&#9654; Ausfuehren</button></div>
       <pre id="out"></pre>
+      <div class="html-vorschau" id="htmlVorschau" hidden><iframe id="htmlFrame" title="HTML-Live-Vorschau" sandbox="allow-scripts allow-modals"></iframe></div>
       <div class="dbg" id="dbgPanel" hidden>
         <span class="dbgz" id="dbgZeile">bereit</span>
         <button id="btnSchritt" class="mini">&#9656; Schritt</button>
@@ -157,6 +161,9 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
 
 <script src="vendor/ace.js"></script>
 <script src="vendor/mode-python.js"></script>
+<script src="vendor/mode-html.js"></script>
+<script src="vendor/mode-css.js"></script>
+<script src="vendor/mode-javascript.js"></script>
 <script src="vendor/theme-tomorrow_night.js"></script>
 <script src="vendor/theme-tomorrow.js"></script>
 <script src="vendor/ext-language_tools.js"></script>
@@ -257,6 +264,9 @@ function initEditor() {
   editor.commands.addCommand({ name:'run', bindKey:{win:'Ctrl-Enter',mac:'Command-Enter'}, exec:function(){ ausfuehren(); } });
   editor.selection.on('changeCursor', zeigeCursor);
   editor.on('change', zeigeCursor);
+  editor.on('change', function () {
+    if (htmlVorschauAn) { clearTimeout(htmlTimer); htmlTimer = setTimeout(htmlAktualisieren, 250); }
+  });
   langTools.addCompleter(pyCompleter);
   ladeSchrift();
 }
@@ -382,7 +392,10 @@ async function oeffnen(pfad) {
   }
   aktuellerPfad = pfad;
   editor.setValue(puffer[pfad], -1);
+  editor.session.setMode(modeFuer(pfad));
   elem('fname').textContent = pfad;
+  elem('btnVorschau').hidden = (editor.session.getMode().$id !== 'ace/mode/html');
+  vorschauAus();
   tabAnzeigen();
   zeigeCursor();
 }
@@ -490,6 +503,7 @@ function steuerungBusy(an) {
 
 async function ausfuehren() {
   if (laufId) { return; }
+  if (htmlVorschauAn) { vorschauAus(); }
   elem('out').innerHTML = '';
   elem('status').textContent = 'laeuft ...';
   try {
@@ -639,6 +653,43 @@ async function gitVonGithubLaden() {
   }
 }
 
+var htmlVorschauAn = false, htmlTimer = null;
+
+function modeFuer(name) {
+  var n = (name || '').toLowerCase();
+  if (/\.(html|htm)$/.test(n)) { return 'ace/mode/html'; }
+  if (/\.(js|mjs|cjs)$/.test(n)) { return 'ace/mode/javascript'; }
+  if (/\.css$/.test(n)) { return 'ace/mode/css'; }
+  if (/\.(md|markdown)$/.test(n)) { return 'ace/mode/markdown'; }
+  if (/\.json$/.test(n)) { return 'ace/mode/json'; }
+  return 'ace/mode/python';
+}
+
+function htmlAktualisieren() {
+  var rahmen = elem('htmlFrame');
+  if (rahmen) { rahmen.srcdoc = editor.getValue(); }
+}
+
+function vorschauZeigen() {
+  htmlVorschauAn = true;
+  elem('htmlVorschau').hidden = false;
+  elem('out').hidden = true;
+  elem('btnVorschau').textContent = String.fromCharCode(9998);
+  htmlAktualisieren();
+  appendChunk('dim', 'Live-Vorschau an - im Editor tippen, rechts erscheint sofort das Ergebnis' + nl());
+}
+
+function vorschauAus() {
+  htmlVorschauAn = false;
+  elem('htmlVorschau').hidden = true;
+  elem('out').hidden = false;
+  elem('btnVorschau').textContent = String.fromCharCode(128065);
+}
+
+function vorschauUmschalten() {
+  if (htmlVorschauAn) { vorschauAus(); } else { vorschauZeigen(); }
+}
+
 async function gitDiff(datei) {
   var d = await (await get('/api/git-diff?datei=' + encodeURIComponent(datei) + '&pfad=' + encodeURIComponent(aktuellerOrdner))).json();
   var h = '<span class="explain"><span class="eh">Diff: ' + esc(datei) + '</span>' + nl() + esc(d.diff || '') + nl() + '</span>' + nl();
@@ -683,6 +734,7 @@ elem('btnSchritt').addEventListener('click', function(){ debugBefehl('step'); })
 elem('btnWeiter').addEventListener('click', function(){ debugBefehl('run'); });
 elem('btnDbgStop').addEventListener('click', function(){ debugBefehl('stop'); });
 elem('btnGitRefresh').addEventListener('click', gitLaden);
+elem('btnVorschau').addEventListener('click', vorschauUmschalten);
 elem('btnGitCommit').addEventListener('click', function(){ gitBefehl('commit'); });
 elem('btnGitPush').addEventListener('click', function(){ gitBefehl('push'); });
 elem('btnGitPull').addEventListener('click', function(){ gitBefehl('pull'); });

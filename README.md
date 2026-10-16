@@ -62,6 +62,7 @@ variant with login, per-user workspaces and a sandboxed runner.*
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+- **HTML-Live-Vorschau:** bei HTML-Dateien zeigt das Auge im Ausgabe-Bereich die gerenderte Seite neben dem Editor — sie aktualisiert sich live beim Tippen (abgeschotteter iframe, Skripte laufen, aber ohne Zugriff auf PyPad)
 - **Löschen direkt in der Dateiliste:** jede Datei und jeder Ordner hat ein **✕** (mit Rückfrage) — im lokalen Ordner und im Online-Workspace
 - **GitHub-Anmeldung:** Token im Git-Panel eintragen (wird bei GitHub geprüft, danach gehen **Push**, **Pull** und **private Repos**). Online wird er pro Benutzer mit `chmod 600` gespeichert, offline nur lokal im Browser; „Abmelden" entfernt ihn wieder.
 - **Internet im ausgefuehrten Code:** `urllib`/`requests` funktionieren direkt; fehlt dem Python ein Zertifikatsbuendel, reicht PyPad `SSL_CERT_FILE`/`REQUESTS_CA_BUNDLE` automatisch nach (macOS-Symptom `CERTIFICATE_VERIFY_FAILED`)
@@ -127,6 +128,7 @@ Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem
 - **GitHub-Anmeldung** per Token (geprüft über die GitHub-API, serverseitig mit `chmod 600` je Benutzer) — damit funktionieren Push, Pull und private Repos
 - **Löschen** von Dateien und Ordnern direkt in der Liste (✕ mit Rückfrage); der Workspace selbst bleibt geschützt
 - **Fenster einstellbar:** Trenner zwischen Seitenleiste, Editor und Ausgabe lassen sich ziehen (Breiten werden im Browser gemerkt); bei schmalem Fenster wird gestapelt
+- **HTML-Live-Vorschau** wie offline; HTML/JavaScript/CSS/JSON werden nach Dateityp hervorgehoben
 - Adressen werden **IPv4 zuerst** aufgeloest (vermeidet lange Haenger, wenn eine IPv6-Adresse vorhanden aber nicht erreichbar ist)
 - Optionaler **Internet-Zugriff** pro Lauf (Haekchen "Internet", Standard aus): Internet ja, eigenes Netz nein - Loopback, RFC1918, Tailnet, Link-Local und IPv6-Privat bleiben gesperrt (nftables filtert nur den Sandkasten-Benutzer). Einrichtung: `/srv/pypad/netz-setup/setup.sh` als root.
 

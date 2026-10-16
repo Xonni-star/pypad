@@ -620,6 +620,13 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"gestoppt": True})
             return
 
+        if pfad == "/api/logout":
+            token = self._cookie()
+            if token:
+                sitzung_loeschen(token)
+            self._json({"ok": True}, cookie=self._cookie_string(""))
+            return
+
         if pfad == "/api/git-token":
             tok = str(daten.get("token") or "").strip()
             p = token_datei(user)

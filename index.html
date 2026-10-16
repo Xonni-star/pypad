@@ -89,6 +89,8 @@ main{flex:1;display:flex;flex-direction:row;min-height:0}
 .md-vorschau pre{background:#0a0f1c;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto}
 .md-vorschau pre code{background:transparent;padding:0}
 .md-vorschau ul{margin:8px 0;padding-left:22px}
+.html-vorschau{flex:1;min-height:0;background:#fff}
+.html-vorschau iframe{display:block;width:100%;height:100%;border:0;background:#fff}
 .md-vorschau blockquote{border-left:3px solid var(--acc);margin:8px 0;padding:2px 12px;color:var(--dim)}
 .md-vorschau a{color:var(--acc)}
 .md-vorschau hr{border:none;border-top:1px solid var(--line);margin:14px 0}
@@ -251,6 +253,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <section class="pane out-pane">
     <div class="pane-head"><span>Ausgabe</span><span class="headtools"><button id="btnJump" class="mini" hidden>&#8594; Zeile</button><span class="hint" id="status"></span></span></div>
     <pre id="out"></pre>
+    <div class="html-vorschau" id="htmlVorschau" hidden><iframe id="htmlFrame" title="HTML-Live-Vorschau" sandbox="allow-scripts allow-modals"></iframe></div>
     <div class="dbg" id="dbgPanel" hidden>
       <span class="dbgzeile" id="dbgZeile">bereit</span>
       <button id="btnSchritt" class="mini">&#9656; Schritt</button>
@@ -1591,7 +1594,7 @@ function ordnerLaden() {
         txt.textContent = name;
         li.appendChild(txt);
         li.setAttribute('data-pfad', d.pfad + '/' + name);
-        li.setAttribute('data-host', name);
+        if (ordnerHatVerbindung) { li.setAttribute('data-host', name); }
         if (!ordnerHatVerbindung) {
           var x = document.createElement('span');
           x.className = 'x';
@@ -1752,7 +1755,34 @@ function vorschauAus() {
   document.getElementById('btnVorschau').textContent = '\u1f441';
 }
 
+var htmlVorschauAn = false, htmlTimer = null;
+
+function htmlAktualisieren() {
+  var rahmen = document.getElementById('htmlFrame');
+  if (rahmen) { rahmen.srcdoc = getCode(); }
+}
+
+function htmlVorschauZeigen() {
+  htmlVorschauAn = true;
+  document.getElementById('htmlVorschau').hidden = false;
+  document.getElementById('out').hidden = true;
+  document.getElementById('btnVorschau').textContent = String.fromCharCode(9998);
+  htmlAktualisieren();
+  footHint.textContent = 'Live-Vorschau an - im Editor tippen, rechts erscheint sofort das Ergebnis';
+}
+
+function htmlVorschauAus() {
+  htmlVorschauAn = false;
+  document.getElementById('htmlVorschau').hidden = true;
+  document.getElementById('out').hidden = false;
+  document.getElementById('btnVorschau').textContent = String.fromCharCode(128065);
+}
+
 function vorschauUmschalten() {
+  if (editor.session.getMode().$id === 'ace/mode/html') {
+    if (htmlVorschauAn) { htmlVorschauAus(); } else { htmlVorschauZeigen(); }
+    return;
+  }
   if (vorschauAn) { vorschauAus(); } else { vorschauZeigen(); }
 }
 
@@ -1785,8 +1815,11 @@ function enterSlot(key, file, text) {
   loading = true;
   setCode(text);
   editor.session.setMode(modeFuer(file ? file.name : ''));
-  document.getElementById('btnVorschau').hidden = (editor.session.getMode().$id !== 'ace/mode/markdown');
+  var jetztModus = editor.session.getMode().$id;
+  document.getElementById('btnVorschau').hidden = (jetztModus !== 'ace/mode/markdown' && jetztModus !== 'ace/mode/html');
+  document.getElementById('btnVorschau').title = (jetztModus === 'ace/mode/html') ? 'HTML-Live-Vorschau' : 'Markdown-Vorschau';
   vorschauAus();
+  htmlVorschauAus();
   loading = false;
   currentKey = key;
   currentFile = file;
@@ -1951,6 +1984,7 @@ editor.on('change', function () {
   if (loading) { return; }
   dirty = true;
   showFileHint();
+  if (htmlVorschauAn) { clearTimeout(htmlTimer); htmlTimer = setTimeout(htmlAktualisieren, 250); }
   clearTimeout(autoTimer);
   autoTimer = setTimeout(autoSpeichern, 1500);
 });

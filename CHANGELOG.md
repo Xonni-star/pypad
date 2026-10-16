@@ -1,5 +1,16 @@
 # Änderungen
 
+## 1.10.0 - 2026-10-16
+
+**HTML-Live-Vorschau (offline und online)**
+- Bei HTML-Dateien erscheint im Ausgabe-Bereich ein Auge-Knopf: Klick zeigt die gerenderte Seite NEBEN dem Editor (Ausgabe wird ausgeblendet) und aktualisiert live beim Tippen (250 ms Verzoegerung)
+- Gerendert wird in einem abgeschotteten iframe: Skripte laufen, aber ohne Zugriff auf PyPad (kein allow-same-origin). Externes CSS/JS/Bilder brauchen absolute Adressen.
+- Online: Dateitypen werden jetzt erkannt und passend hervorgehoben (HTML, JavaScript, CSS, JSON) - vorher nur Python
+
+**Fixes**
+- Ordner-Browser: lokale Dateien liessen sich nicht oeffnen (der Dateiname wurde als Verbindungsname gesetzt, dadurch lief die Anfrage ueber den Remote-Weg)
+- Online: "Abmelden" tat nichts - POST /api/logout fehlte, die Seite hat nur neu geladen
+
 ## 1.9.1 - 2026-10-16
 
 **Fenstergroessen wieder einstellbar**
