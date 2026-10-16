@@ -246,6 +246,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
       <span>Code</span>
       <span class="hint">Cmd/Ctrl+Enter = Ausfuehren &middot; F3 = zur Definition</span>
       <button id="btnVorschau" class="mini" title="Markdown-Vorschau" hidden>&#128065;</button>
+      <button id="btnLoeschen" class="mini" title="Diese Datei loeschen" hidden>&#128465;</button>
     </div>
     <div class="editor-wrap" id="editorWrap"><div id="editor"></div></div>
     <div class="md-vorschau" id="mdVorschau" hidden></div>
@@ -930,6 +931,31 @@ function ladeFortschritt() {
   }).catch(function () { });
 }
 
+async function dateiLoeschen() {
+  if (!currentFile) { footHint.textContent = 'Keine Datei offen'; return; }
+  if (currentFile.host) { footHint.textContent = 'Loeschen auf verbundenen Servern geht noch nicht'; return; }
+  var anzeige = (currentFile.dir ? currentFile.dir + '/' : '') + currentFile.name;
+  if (!window.confirm('Wirklich loeschen: ' + anzeige + ' ?')) { return; }
+  var ziel = currentFile.pfad ? '/pfad-loeschen' : '/delete';
+  var body = currentFile.pfad ? { pfad: currentFile.pfad } : { dir: currentFile.dir, name: currentFile.name };
+  var key = currentKey;
+  try {
+    var d = await (await fetch(ziel, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (!(d.deleted || d.ok)) { footHint.textContent = 'Loeschen fehlgeschlagen: ' + (d.error || '?'); return; }
+    dirty = false;
+    clearTimeout(autoTimer);
+    if (key) { tabSchliessen(key); } else { currentFile = null; }
+    if (key) { delete buffers[key]; }
+    document.getElementById('btnLoeschen').hidden = true;
+    footHint.textContent = 'geloescht: ' + anzeige;
+    if (typeof refreshFiles === 'function') { refreshFiles(); }
+    if (typeof lektionenLaden === 'function') { lektionenLaden(); }
+    if (typeof ordnerLaden === 'function' && document.getElementById('dateiLeiste').hidden === false) { ordnerLaden(); }
+  } catch (e) {
+    footHint.textContent = 'Loeschen fehlgeschlagen (kein Kontakt?)';
+  }
+}
+
 function zeigeErklaerung() {
   var dir = lessonsEl.value;
   if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
@@ -1393,6 +1419,7 @@ function tabSchliessen(key) {
     else {
       currentKey = null;
       currentFile = null;
+      document.getElementById('btnLoeschen').hidden = true;
       loading = true;
       setCode(DEFAULT_CODE);
       loading = false;
@@ -1850,6 +1877,7 @@ function enterSlot(key, file, text) {
   loading = false;
   currentKey = key;
   currentFile = file;
+  document.getElementById('btnLoeschen').hidden = false;
   dirty = false;
   showFileHint();
   updateStdinHint();
@@ -2052,6 +2080,7 @@ document.getElementById('btnTheme').addEventListener('click', function () {
 document.getElementById('btnVerlauf').addEventListener('click', verlaufZeigen);
 document.getElementById('btnTipp').addEventListener('click', zeigeTipp);
 document.getElementById('btnErklaerung').addEventListener('click', zeigeErklaerung);
+document.getElementById('btnLoeschen').addEventListener('click', dateiLoeschen);
 document.getElementById('btnQuiz').addEventListener('click', quizStarten);
 document.getElementById('btnPruefen').addEventListener('click', pruefen);
 btnErledigt.addEventListener('click', function () {

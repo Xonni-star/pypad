@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.11.1 - 2026-10-16
+
+**Löschen auch für Lektions- und Snippet-Dateien**
+- Neuer Papierkorb-Knopf in der Editor-Leiste (erscheint, sobald eine Datei offen ist): löscht die aktuelle Datei nach Rückfrage — egal ob Lektion, Snippet oder Datei aus einem Ordner
+- Nutzt die vorhandenen Wege: /delete für Lektionen und Snippets, /pfad-loeschen für Ordner-Dateien; die Registerkarte wird geschlossen und die Listen aktualisiert
+- Dateien auf verbundenen Servern (SSH/FTP) melden ehrlich, dass Löschen dort noch nicht geht
+
 ## 1.11.0 - 2026-10-16
 
 **Lernbereich: Erklärungen für alle acht Lektionen**
