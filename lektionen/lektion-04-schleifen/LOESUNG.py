@@ -1,20 +1,15 @@
-# Lektion 04 — Lösung (erst nach eigenem Versuch!)
+# Lektion 04 — Lösung
+# range(1, 11) zählt 1 bis 10 — die obere Grenze gehört nicht dazu.
+# Bei while muss sich die Bedingung IN der Schleife ändern.
 
-print("1 bis 10:")
 for i in range(1, 11):
     print(i)
 
-print("-" * 20)
-
-print("Einmaleins der 7:")
 for i in range(1, 11):
-    print(f"7 x {i} = {i * 7}")
+    print(i * 7)
 
-print("-" * 20)
-
-start = int(input("Startzahl: "))
-zahl = start
-while zahl >= 1:
+zahl = int(input("Startzahl: "))
+while zahl > 0:
     print(zahl)
-    zahl -= 1
+    zahl = zahl - 1
 print("Start!")

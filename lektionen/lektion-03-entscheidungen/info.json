@@ -1,8 +1,19 @@
 {
+  "titel": "Entscheidungen",
+  "ziel": "Mit if / elif / else entscheidet das Programm, welchen Weg es nimmt.",
+  "erklaerung": [
+    "if bedingung: führt den eingerückten Block nur aus, wenn die Bedingung stimmt (also True ist).",
+    "Vergleiche: < <= > >= == !=. Achtung: == vergleicht zwei Werte, = speichert einen Wert in einer Variablen.",
+    "elif prüft der Reihe nach weiter, else fängt alles Übrige auf. Es läuft immer nur EIN Block — der erste, der passt.",
+    "Der Doppelpunkt am Zeilenende und die Einrückung (4 Leerzeichen) gehören dazu — ohne sie gibt es einen Fehler.",
+    "Mehrere Bedingungen verbindet man mit and und or; not kehrt eine Bedingung um."
+  ],
+  "beispiel_code": "alter = 16\nif alter < 12:\n    print(\"Kind\")\nelif alter < 18:\n    print(\"Teenager\")\nelse:\n    print(\"Erwachsener\")",
   "tipps": [
-    "if alter < 12:  - der Doppelpunkt gehört dazu!",
-    "Von klein nach groß prüfen: erst <= 11, dann <= 17, dann <= 64, sonst Senior.",
-    "Der eingerückte Block (4 Leerzeichen) gehört zum if."
+    "Vergleiche: < <= > >= == !=",
+    "Doppelpunkt am Zeilenende: if alter < 12:",
+    "Der erste passende Block gewinnt — die Reihenfolge von oben nach unten ist wichtig.",
+    "Für „größer oder gleich“ schreibst du >=, nicht =>."
   ],
   "pruefung": {
     "uebung": [
@@ -77,17 +88,27 @@
         "nichts"
       ],
       "richtig": 0,
-      "erklaerung": "if alter < 12: - der Doppelpunkt kündigt den Block an."
+      "erklaerung": "if bedingung: — der Doppelpunkt kündigt den eingerückten Block an."
     },
     {
-      "frage": "if a > 1 / elif a > 2 / else - welcher Teil läuft bei a = 3?",
+      "frage": "if a > 1 / elif a > 2 / else — welcher Teil läuft bei a = 3?",
       "antworten": [
-        "der erste (a > 1)",
-        "der zweite (a > 2)",
-        "beide"
+        "der if-Block",
+        "der elif-Block",
+        "der else-Block"
       ],
       "richtig": 0,
-      "erklaerung": "Python prüft von oben nach unten und nimmt die ERSTE passende Bedingung."
+      "erklaerung": "Von oben nach unten geprüft: 3 > 1 stimmt schon, also läuft der if-Block — der Rest wird übersprungen."
+    },
+    {
+      "frage": "Womit prüfst du, ob zwei Werte gleich sind?",
+      "antworten": [
+        "==",
+        "=",
+        "<>"
+      ],
+      "richtig": 0,
+      "erklaerung": "== vergleicht, = weist zu. Das ist eine der häufigsten Verwechslungen."
     }
   ]
 }

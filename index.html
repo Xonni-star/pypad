@@ -185,6 +185,7 @@ footer{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(
   <button id="btnBeispiel">Beispiel</button>
   <select id="stufe"><option value="uebung">Übung</option><option value="uebung-plus">Übung +</option><option value="uebung-profi">Übung ++</option></select>
   <button id="btnUebung">Laden</button>
+  <button id="btnErklaerung" title="Erklaerung, Ziel und Tipps zur Lektion">&#128214; Erklaerung</button>
   <button id="btnTipp">Tipp</button>
   <button id="btnQuiz">Quiz</button>
   <button id="btnPruefen">✓ Prüfen</button>
@@ -927,6 +928,32 @@ function ladeFortschritt() {
     fortschritt = d.fortschritt || {};
     fortschrittAnzeigen();
   }).catch(function () { });
+}
+
+function zeigeErklaerung() {
+  var dir = lessonsEl.value;
+  if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
+  var titel = (lessonsEl.options[lessonsEl.selectedIndex] || {}).text || dir;
+  fetch('/lektion-info?dir=' + encodeURIComponent('lektionen/' + dir))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d || (!d.ziel && !d.erklaerung)) { footHint.textContent = 'Fuer diese Lektion gibt es noch keine Erklaerung'; return; }
+      var nl = String.fromCharCode(10);
+      var h = '<span class="explain"><span class="el">Erklaerung: ' + esc(titel) + '</span>' + nl;
+      if (d.ziel) { h += '<span class="et">Ziel: ' + esc(d.ziel) + '</span>' + nl + nl; }
+      var abs = d.erklaerung;
+      if (abs) {
+        (Array.isArray(abs) ? abs : [abs]).forEach(function (p) { h += '<span class="et">' + esc(p) + '</span>' + nl + nl; });
+      }
+      if (d.beispiel_code) { h += '<span class="et">' + esc(d.beispiel_code) + '</span>' + nl + nl; }
+      if (d.tipps && d.tipps.length) {
+        h += '<span class="el">Tipps</span>' + nl;
+        d.tipps.forEach(function (t) { h += '<span class="et">  - ' + esc(t) + '</span>' + nl; });
+      }
+      h += '</span>' + nl;
+      outEl.insertAdjacentHTML('beforeend', h);
+      outEl.scrollTop = outEl.scrollHeight;
+    }).catch(function () { footHint.textContent = 'keine Verbindung'; });
 }
 
 function zeigeTipp() {
@@ -2024,6 +2051,7 @@ document.getElementById('btnTheme').addEventListener('click', function () {
 });
 document.getElementById('btnVerlauf').addEventListener('click', verlaufZeigen);
 document.getElementById('btnTipp').addEventListener('click', zeigeTipp);
+document.getElementById('btnErklaerung').addEventListener('click', zeigeErklaerung);
 document.getElementById('btnQuiz').addEventListener('click', quizStarten);
 document.getElementById('btnPruefen').addEventListener('click', pruefen);
 btnErledigt.addEventListener('click', function () {

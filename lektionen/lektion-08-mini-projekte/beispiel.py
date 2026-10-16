@@ -1,23 +1,31 @@
-# Lektion 08 — Mini-Projekt: Zahlen raten
-# Ausführen:  python3 beispiel.py
-# (Verbindet: input, int, if/elif/else, while, Funktionen, random)
+# Lektion 08 — Beispiel: kleine Projekte zusammensetzen
+# Variante A: Trinkgeld-Rechner
 
-import random
+def trinkgeld_rechner():
+    betrag = float(input("Rechnungsbetrag: "))
+    prozent = float(input("Trinkgeld in Prozent: "))
+    trinkgeld = betrag * prozent / 100
+    gesamt = betrag + trinkgeld
+    print(f"Trinkgeld: {trinkgeld:.2f} EUR")
+    print(f"Gesamt:    {gesamt:.2f} EUR")
 
-
-def spielen(bis=100):
-    geheim = random.randint(1, bis)
-    versuche = 0
+# Variante B: Einkaufsliste mit while, Liste und Datei
+def einkaufsliste():
+    artikel = []
     while True:
-        tipp = int(input(f"Zahl zwischen 1 und {bis}: "))
-        versuche += 1
-        if tipp < geheim:
-            print("Zu klein!")
-        elif tipp > geheim:
-            print("Zu gross!")
-        else:
-            print(f"Richtig! Gebraucht: {versuche} Versuche.")
-            break
+        eingabe = input("Artikel (leer = Ende): ")
+        if eingabe == "":
+            break                     # Schleife sauber verlassen
+        artikel.append(eingabe)
 
+    for i, a in enumerate(artikel, start=1):
+        print(f"{i}. {a}")
 
-spielen()
+    with open("einkauf.txt", "w") as datei:
+        for a in artikel:
+            datei.write(a + "\n")
+    print("Gespeichert in einkauf.txt")
+
+# Variante A starten (für B die Zeile unten austauschen)
+trinkgeld_rechner()
+# einkaufsliste()

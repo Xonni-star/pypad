@@ -62,6 +62,7 @@ variant with login, per-user workspaces and a sandboxed runner.*
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
+- **Lernbereich mit Erklärungen (LERNEN):** acht Lektionen von Ausgaben bis Mini-Projekten — je mit Beispiel, Übung, Lösung, Tipp und Quiz, plus Knopf „Erklärung" (Ziel, Erklärung, Beispielcode)
 - **HTML-Live-Vorschau:** bei HTML-Dateien zeigt das Auge im Ausgabe-Bereich die gerenderte Seite neben dem Editor — sie aktualisiert sich live beim Tippen (abgeschotteter iframe, Skripte laufen, aber ohne Zugriff auf PyPad)
 - **Löschen direkt in der Dateiliste:** jede Datei und jeder Ordner hat ein **✕** (mit Rückfrage) — im lokalen Ordner und im Online-Workspace
 - **GitHub-Anmeldung:** Token im Git-Panel eintragen (wird bei GitHub geprüft, danach gehen **Push**, **Pull** und **private Repos**). Online wird er pro Benutzer mit `chmod 600` gespeichert, offline nur lokal im Browser; „Abmelden" entfernt ihn wieder.

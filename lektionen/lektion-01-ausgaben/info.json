@@ -1,8 +1,19 @@
 {
+  "titel": "Ausgaben & Variablen",
+  "ziel": "Werte in Variablen speichern und mit print() ausgeben — auch gemischt in einem Satz.",
+  "erklaerung": [
+    "Eine Variable ist ein Name für einen Wert: name = \"Max\" legt den Text Max unter dem Namen name ab. Ab da kannst du name überall benutzen.",
+    "print(\"Hallo\", name) gibt mehrere Dinge aus — Python setzt automatisch ein Leerzeichen dazwischen. Jede Ausgabe braucht ein eigenes print().",
+    "Eleganter geht es mit einem f-string: f\"Ich bin {alter} Jahre alt.\" Das kleine f vor dem Anführungszeichen macht die geschweiften Klammern zu Platzhaltern.",
+    "Text steht in Anführungszeichen, Zahlen nicht: 42 ist eine Zahl, \"42\" ist Text. Mit Zahlen kann man rechnen, mit Text nicht.",
+    "\"-\" * 30 wiederholt Zeichen — praktisch als Trennlinie zwischen Ausgaben."
+  ],
+  "beispiel_code": "name = \"Max\"\nprint(\"Hallo\", name)\nprint(f\"Ich bin {21} Jahre alt.\")\nprint(\"-\" * 20)",
   "tipps": [
-    "Nutze einen f-string: f\"Hallo {name}\" - die geschweiften Klammern setzen den Wert ein.",
+    "Nutze einen f-string: f\"Hallo {name}\" — die geschweiften Klammern setzen den Wert ein.",
     "Eine Trennlinie bekommst du mit \"-\" * 25 (Zeichen wiederholen).",
-    "Jede Ausgabe braucht ein eigenes print()."
+    "Jede Ausgabe braucht ein eigenes print().",
+    "Text und Zahl mischt man nicht mit + — nimm ein Komma oder einen f-string."
   ],
   "pruefung": {
     "uebung": [
@@ -52,6 +63,16 @@
       ],
       "richtig": 0,
       "erklaerung": "Ein f-string (kleines f vor dem Anführungszeichen) setzt Werte direkt in den Text ein."
+    },
+    {
+      "frage": "Was ist der Unterschied zwischen 42 und \"42\"?",
+      "antworten": [
+        "42 ist eine Zahl, \"42\" ist Text",
+        "gar keiner",
+        "\"42\" kann man verdoppeln"
+      ],
+      "richtig": 0,
+      "erklaerung": "Mit der Zahl 42 kann man rechnen (42 * 2 = 84), mit dem Text \"42\" nicht — dort hängt Python aneinander."
     }
   ]
 }

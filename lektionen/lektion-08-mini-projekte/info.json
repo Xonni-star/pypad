@@ -1,8 +1,19 @@
 {
+  "titel": "Mini-Projekte",
+  "ziel": "Alles aus den Lektionen 01–07 in einem kleinen, nützlichen Programm verbinden.",
+  "erklaerung": [
+    "Ein Programm entsteht in kleinen Schritten: erst fragen (input), dann rechnen, dann schön ausgeben.",
+    "Für Geldbeträge nimmt man Kommazahlen (float) und formatiert sie im f-string: f\"{summe:.2f} EUR\" — zwei Nachkommastellen.",
+    "Sammeln bis zum Ende: while True: mit eingabe = input(...) und bei leerer Eingabe break.",
+    "Wenn die Daten bleiben sollen, schreibst du sie am Ende in eine Datei (Lektion 07).",
+    "Zerlege dein Projekt in Teile und teste jeden Teil einzeln: erst fragen, dann rechnen, dann speichern."
+  ],
+  "beispiel_code": "betrag = float(input(\"Betrag: \"))\nprozent = float(input(\"Trinkgeld in %: \"))\ntrinkgeld = betrag * prozent / 100\nprint(f\"Trinkgeld: {trinkgeld:.2f} EUR\")\nprint(f\"Gesamt:   {betrag + trinkgeld:.2f} EUR\")",
   "tipps": [
-    "Überlege zuerst: welche Schritte braucht das Programm?",
-    "Baue es aus den Bausteinen der früheren Lektionen zusammen.",
-    "Teste mit einfachen Werten und mit Sonderfällen (0, leere Eingabe)."
+    "Kommazahlen mit float(input(...)) einlesen",
+    "Zwei Nachkommastellen: f\"{wert:.2f}\"",
+    "Sammeln bis zur leeren Eingabe: while True: ... if eingabe == \"\": break",
+    "Schritt für Schritt testen — nicht alles auf einmal schreiben"
   ],
   "pruefung": {
     "uebung": [
@@ -37,24 +48,34 @@
   },
   "quiz": [
     {
-      "frage": "Eine Einkaufsliste soll erst bei leerer Eingabe enden. Was passt?",
+      "frage": "Eine Einkaufsliste soll erst bei leerer Eingabe enden — was passt?",
       "antworten": [
         "while True: ... if eingabe == \"\": break",
-        "for i in range(10):",
-        "gar keine Schleife"
+        "for i in range(3):",
+        "if eingabe == \"\": weiter"
       ],
       "richtig": 0,
-      "erklaerung": "while True läuft, bis break kommt - hier bei leerer Eingabe."
+      "erklaerung": "Eine while-True-Schleife läuft weiter, bis du mit break aussteigst — hier bei der leeren Eingabe."
     },
     {
       "frage": "Was brauchst du für einen Durchschnitt?",
       "antworten": [
-        "Summe geteilt durch Anzahl",
-        "Summe plus Anzahl",
+        "Summe geteilt durch die Anzahl",
+        "die größte Zahl",
         "nur die Summe"
       ],
       "richtig": 0,
-      "erklaerung": "sum(werte) / len(werte)"
+      "erklaerung": "Durchschnitt = sum(werte) / len(werte)."
+    },
+    {
+      "frage": "Wie gibst du einen Betrag mit genau zwei Nachkommastellen aus?",
+      "antworten": [
+        "f\"{wert:.2f}\"",
+        "f\"{wert}\"",
+        "round(wert)"
+      ],
+      "richtig": 0,
+      "erklaerung": ":.2f im f-string bedeutet: Festkommazahl mit zwei Stellen nach dem Punkt."
     }
   ]
 }

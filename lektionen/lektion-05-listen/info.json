@@ -1,8 +1,19 @@
 {
+  "titel": "Listen & Dictionaries",
+  "ziel": "Mehrere Werte in einer Liste sammeln und zusammengehörige Werte in einem Dictionary ablegen.",
+  "erklaerung": [
+    "gerichte = [\"Pizza\", \"Suppe\"] ist eine Liste — geordnet, die Positionen zählen ab 0. gerichte[0] ist der erste Eintrag.",
+    "gerichte.append(\"Nudeln\") hängt hinten an, len(gerichte) zählt die Einträge, gerichte[-1] ist der letzte.",
+    "Nummeriert ausgeben: for i, g in enumerate(gerichte, start=1): liefert Position und Eintrag.",
+    "Ein Dictionary ordnet Schlüssel zu Werten: alter = {\"Max\": 45}; alter[\"Max\"] liest, alter[\"Mia\"] = 30 ergänzt einen Eintrag.",
+    "for name, jahre in alter.items(): läuft durch Schlüssel und Wert — die Reihenfolge ist die des Einfügens."
+  ],
+  "beispiel_code": "gerichte = [\"Pizza\", \"Suppe\"]\ngerichte.append(\"Nudeln\")\nfor i, g in enumerate(gerichte, start=1):\n    print(i, \".\", g)\nprint(\"Anzahl:\", len(gerichte))",
   "tipps": [
-    "Anhängen: liste.append(\"Suppe\")",
-    "Nummerieren: for i, x in enumerate(liste, start=1):",
-    "Dictionary-Eintrag: daten[\"Max\"] = 45"
+    "Nummeriert: for i, gericht in enumerate(gerichte, start=1):",
+    "Anhängen: liste.append(\"Suppe\") — Anzahl: len(liste)",
+    "Dictionary anlegen: d[\"Max\"] = 45 / durchlaufen: for name in d:",
+    "Die erste Position ist 0, nicht 1 — liste[0] ist der erste Eintrag."
   ],
   "pruefung": {
     "uebung": [
@@ -48,20 +59,30 @@
       "antworten": [
         "liste[0]",
         "liste[1]",
-        "liste.first"
+        "liste.first()"
       ],
       "richtig": 0,
-      "erklaerung": "Die Zählung beginnt bei 0."
+      "erklaerung": "Gezählt wird ab 0 — das erste Element liegt auf Position 0."
     },
     {
       "frage": "Womit hängst du etwas an eine Liste an?",
       "antworten": [
         "liste.append(x)",
         "liste.add(x)",
-        "liste.push(x)"
+        "x in liste"
       ],
       "richtig": 0,
-      "erklaerung": "append() hängt hinten an."
+      "erklaerung": "append() hängt am Ende an. add() gibt es bei Listen nicht."
+    },
+    {
+      "frage": "Was ist ein Dictionary?",
+      "antworten": [
+        "Schlüssel -> Wert",
+        "eine sortierte Liste",
+        "eine Funktion"
+      ],
+      "richtig": 0,
+      "erklaerung": "Ein Dictionary ordnet jedem Schlüssel einen Wert zu — praktisch für zusammengehörige Daten wie Name und Alter."
     }
   ]
 }

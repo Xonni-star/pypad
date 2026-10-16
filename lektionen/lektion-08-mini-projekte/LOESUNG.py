@@ -1,49 +1,13 @@
-# Lektion 08 — Lösung (erst nach eigenem Versuch!)
-# Alle drei Varianten kurz gezeigt — bau deine Lieblingsvariante weiter aus.
+# Lektion 08 — Lösung (Variante A: Trinkgeld-Rechner)
+# Erst fragen, dann rechnen, dann ausgeben — in kleinen Schritten.
 
-print("=== A) Trinkgeld-Rechner ===")
 betrag = float(input("Rechnungsbetrag: "))
-prozent = float(input("Trinkgeld in %: "))
+prozent = float(input("Trinkgeld in Prozent: "))
+
 trinkgeld = betrag * prozent / 100
-print(f"Trinkgeld:   {trinkgeld:.2f}")
-print(f"Gesamtsumme: {betrag + trinkgeld:.2f}")
+gesamt = betrag + trinkgeld
 
-print()
-print("=== B) Einkaufsliste ===")
-liste = []
-while True:
-    artikel = input("Artikel (leer = Ende): ")
-    if artikel == "":
-        break
-    liste.append(artikel)
+print(f"Trinkgeld: {trinkgeld:.2f} EUR")
+print(f"Gesamt:    {gesamt:.2f} EUR")
 
-for i, artikel in enumerate(liste, start=1):
-    print(f"{i}. {artikel}")
-
-with open("einkauf.txt", "w") as datei:
-    for artikel in liste:
-        datei.write(artikel + "\n")
-print("Gespeichert in einkauf.txt")
-
-print()
-print("=== C) Noten-Durchschnitt ===")
-noten = []
-while True:
-    eingabe = input("Note (ende = fertig): ")
-    if eingabe == "ende":
-        break
-    noten.append(float(eingabe))
-
-if noten:
-    schnitt = sum(noten) / len(noten)
-    print(f"Durchschnitt: {schnitt:.2f}")
-    if schnitt <= 1.5:
-        print("Sehr gut!")
-    elif schnitt <= 2.5:
-        print("Gut.")
-    elif schnitt <= 3.5:
-        print("Okay.")
-    else:
-        print("Da geht noch was.")
-else:
-    print("Keine Noten eingegeben.")
+# :.2f heißt: Zahl mit zwei Nachkommastellen ausgeben.

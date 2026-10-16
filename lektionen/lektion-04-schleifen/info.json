@@ -1,8 +1,19 @@
 {
+  "titel": "Schleifen",
+  "ziel": "Wiederholungen schreiben: for für eine bekannte Anzahl, while für eine Bedingung.",
+  "erklaerung": [
+    "for i in range(1, 11): zählt 1 bis 10 — die obere Grenze gehört NICHT dazu.",
+    "range(1, 11, 2) schreitet in Zweierschritten, range(5) zählt 0 bis 4.",
+    "while bedingung: läuft, solange die Bedingung stimmt. Die Bedingung muss sich IN der Schleife ändern, sonst läuft sie ewig (dann hilft der Stopp-Knopf).",
+    "In der Schleife darf man rechnen und sammeln: summe = summe + i.",
+    "break springt sofort aus der Schleife, continue überspringt den Rest des aktuellen Durchlaufs."
+  ],
+  "beispiel_code": "for i in range(1, 6):\n    print(i, \"mal 7 ist\", i * 7)\n\nzahl = 3\nwhile zahl > 0:\n    print(zahl)\n    zahl = zahl - 1",
   "tipps": [
-    "for i in range(1, 11) läuft 1 bis 10 - die 11 gehört nicht dazu.",
-    "while: die Bedingung muss sich IN der Schleife ändern, sonst endlos.",
-    "Falls es hängt: der Stopp-Knopf beendet das Programm."
+    "for i in range(1, 11): ergibt 1 bis 10 (die 11 gehört nicht dazu).",
+    "Rechnen in der Schleife: print(i * 7)",
+    "Bei while muss sich die Bedingung in der Schleife ändern, sonst endlos!",
+    "Endlosschleife? Der Stopp-Knopf beendet sie."
   ],
   "pruefung": {
     "uebung": [
@@ -60,22 +71,32 @@
     {
       "frage": "Wie oft läuft for i in range(3)?",
       "antworten": [
-        "3 mal",
-        "4 mal",
-        "2 mal"
+        "3 mal (0, 1, 2)",
+        "2 mal",
+        "4 mal"
       ],
       "richtig": 0,
-      "erklaerung": "range(3) zählt 0, 1, 2 - also drei Durchläufe."
+      "erklaerung": "range(3) liefert 0, 1, 2 — die Zahl selbst ist nicht dabei."
     },
     {
       "frage": "Was ist bei einer while-Schleife besonders wichtig?",
       "antworten": [
-        "Die Bedingung muss sich in der Schleife ändern",
-        "Es braucht immer ein range()",
-        "Nichts Besonderes"
+        "dass sich die Bedingung ändert",
+        "dass sie schnell läuft",
+        "dass sie ein else hat"
       ],
       "richtig": 0,
-      "erklaerung": "Sonst läuft sie endlos - im Zweifel hilft der Stopp-Knopf."
+      "erklaerung": "Ändert sich die Bedingung nicht, läuft die Schleife endlos — mit dem Stopp-Knopf kommst du raus."
+    },
+    {
+      "frage": "Welche Zahlen liefert range(1, 5)?",
+      "antworten": [
+        "1, 2, 3, 4",
+        "1, 2, 3, 4, 5",
+        "0, 1, 2, 3, 4"
+      ],
+      "richtig": 0,
+      "erklaerung": "Der Start zählt mit, die obere Grenze nicht — deshalb endet es bei 4."
     }
   ]
 }

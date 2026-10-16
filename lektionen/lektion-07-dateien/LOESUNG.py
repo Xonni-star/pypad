@@ -1,19 +1,15 @@
-# Lektion 07 — Lösung (erst nach eigenem Versuch!)
-
+# Lektion 07 — Lösung
 import random
 
-woerter = []
-for i in range(3):
-    woerter.append(input(f"Wort {i + 1}: "))
-
 with open("woerter.txt", "w") as datei:
-    for wort in woerter:
-        datei.write(wort + "\n")
+    for _ in range(3):
+        wort = input("Wort: ")
+        datei.write(wort + "\n")     # Umbruch selbst schreiben
 
-print("In der Datei steht:")
 with open("woerter.txt") as datei:
-    for zeile in datei:
-        wort = zeile.strip()
-        print(f"{wort} hat {len(wort)} Buchstaben")
+    alle = [zeile.strip() for zeile in datei]   # strip() entfernt den Umbruch
 
-print("Zufallswort:", random.choice(woerter))
+for wort in alle:
+    print(wort, "-", len(wort), "Buchstaben")
+
+print("Zufallswort:", random.choice(alle))

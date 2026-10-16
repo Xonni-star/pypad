@@ -1,20 +1,16 @@
-# Lektion 06 — Lösung (erst nach eigenem Versuch!)
+# Lektion 06 — Lösung
 
 def begruessen(name):
-    print(f"Hallo {name}!")
-
+    print("Hallo", name + "!")
 
 def ist_gerade(zahl):
-    return zahl % 2 == 0
+    return zahl % 2 == 0      # % ist der Rest: 4 % 2 == 0 -> gerade
 
+for n in ["Max", "Mia", "Tom"]:
+    begruessen(n)
 
-for name in ["Max", "Anna", "Ben"]:
-    begruessen(name)
-
-print("-" * 20)
-
-for zahl in range(1, 11):
-    if ist_gerade(zahl):
-        print(zahl, "ist gerade")
+for i in range(1, 11):
+    if ist_gerade(i):
+        print(i, "ist gerade")
     else:
-        print(zahl, "ist ungerade")
+        print(i, "ist ungerade")

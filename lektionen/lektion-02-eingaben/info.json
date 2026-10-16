@@ -1,8 +1,19 @@
 {
+  "titel": "Eingaben & Zahlen",
+  "ziel": "Mit input() etwas fragen, die Antwort in eine Zahl umwandeln und damit rechnen.",
+  "erklaerung": [
+    "input(\"Wie heißt du? \") zeigt die Frage und wartet auf deine Eingabe. Das Ergebnis ist IMMER Text — auch bei \"7\".",
+    "Zum Rechnen brauchst du eine Zahl: int(text) macht aus \"7\" die 7, float(text) erlaubt Kommazahlen wie \"2.5\".",
+    "Ohne Umwandlung passiert etwas Merkwürdiges: \"12\" + \"3\" ergibt \"123\" (Text aneinandergehängt), nicht 15.",
+    "Rechnen geht mit + - * / — ganzzahlige Division ist //, der Rest ist %.",
+    "Kommazahlen schreibst du mit Punkt (2.5), nicht mit Komma."
+  ],
+  "beispiel_code": "zahl = int(input(\"Eine Zahl: \"))\nprint(\"Doppelt:\", zahl * 2)\nprint(\"Rest bei 2:\", zahl % 2)",
   "tipps": [
-    "input() liefert immer Text - wandle um: int(text) oder float(text).",
-    "Kommazahlen mit Punkt: float(\"2.5\")",
-    "Runden beim Ausgeben: f\"{wert:.2f}\""
+    "input(\"Zahl 1: \") gibt immer Text zurück — int() drumherum.",
+    "int(\"7\") ergibt die Zahl 7, float(\"2.5\") ergibt 2.5.",
+    "Rechnen: + - * / und der Rest mit %",
+    "Ist die Eingabe keine Zahl, bricht int() mit einem ValueError ab."
   ],
   "pruefung": {
     "uebung": [
@@ -41,22 +52,32 @@
     {
       "frage": "Was liefert input() immer zurück?",
       "antworten": [
-        "Text (str)",
+        "Text",
         "eine Zahl",
-        "je nach Eingabe alles"
+        "je nach Eingabe Text oder Zahl"
       ],
       "richtig": 0,
-      "erklaerung": "input() gibt IMMER Text zurück - zum Rechnen mit int() oder float() umwandeln."
+      "erklaerung": "input() liefert immer Text. Erst int() oder float() machen daraus eine Zahl."
     },
     {
       "frage": "Wie machst du aus \"7\" die Zahl 7?",
       "antworten": [
         "int(\"7\")",
-        "str(\"7\")",
-        "zahl(\"7\")"
+        "str(7)",
+        "zahl(7)"
       ],
       "richtig": 0,
-      "erklaerung": "int() wandelt Text in eine ganze Zahl um, float() in eine Kommazahl."
+      "erklaerung": "int() wandelt Text in eine ganze Zahl um."
+    },
+    {
+      "frage": "Was ergibt \"12\" + \"3\"?",
+      "antworten": [
+        "\"123\"",
+        "15",
+        "einen Fehler"
+      ],
+      "richtig": 0,
+      "erklaerung": "Zwei Texte werden aneinandergehängt. Für 15 brauchst du int(\"12\") + int(\"3\")."
     }
   ]
 }

@@ -7,6 +7,7 @@ Ziel: von Null auf Python — praxisnah, mit Übungen und kleinen Helfer-Tools.
 - Jede Lektion: kurzes Beispiel lesen → Übung selbst lösen → mit der Lösung vergleichen.
 - Den Code **selbst tippen** (nicht copy-paste) — das ist der halbe Lerneffekt.
 - Ausprobieren schlägt Theorie. Fehler sind erwünscht.
+- Der Knopf **Erklärung** zeigt Ziel, Erklärung und Beispielcode zur Lektion. **Tipp** gibt Hinweise nacheinander, **Quiz** stellt Verständnisfragen mit Begründung.
 
 ## Lektionen
 
@@ -23,7 +24,7 @@ Ziel: von Null auf Python — praxisnah, mit Übungen und kleinen Helfer-Tools.
 
 ## Struktur
 
-Jede Lektion hat einen Ordner mit `beispiel.py`, `uebung.py` und `LOESUNG.py`.
+Jede Lektion hat einen Ordner mit `beispiel.py`, `uebung.py` und `LOESUNG.py` (dazu die Stufen `uebung-plus.py` und `uebung-profi.py`). Erklärungen, Tipps, Quizfragen und die Prüfregeln stehen in `info.json`.
 
 Am bequemsten in PyPad öffnen: Leiste **LERNEN** → Lektion wählen → Beispiel / Übung / Lösung.
 Speichern legt die Datei wieder in die Lektion, und Wechseln verliert keine Eingaben.

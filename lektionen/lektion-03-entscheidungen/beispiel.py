@@ -1,24 +1,24 @@
-# Lektion 03 — Entscheidungen
-# Ausführen:  python3 beispiel.py
+# Lektion 03 — Beispiel: Entscheidungen
 
 alter = int(input("Wie alt bist du? "))
 
-if alter >= 18:
-    print("Du bist volljährig.")
+# Von oben nach unten prüfen — der erste passende Block läuft.
+if alter < 12:
+    print("Du bist ein Kind.")
+elif alter < 18:
+    print("Du bist ein Teenager.")
+elif alter < 65:
+    print("Du bist erwachsen.")
 else:
-    print("Du bist noch nicht volljährig.")
+    print("Du bist Senior.")
 
-print()  # leere Zeile
+# Mehrere Bedingungen verbinden
+wetter = "sonnig"
+temperatur = 24
 
-punkte = int(input("Punkte (0-100): "))
+if wetter == "sonnig" and temperatur > 20:
+    print("Perfektes Wetter für draußen!")
 
-if punkte >= 90:
-    note = "sehr gut"
-elif punkte >= 75:
-    note = "gut"
-elif punkte >= 50:
-    note = "bestanden"
-else:
-    note = "durchgefallen"
-
-print(f"Ergebnis: {note}")
+# not kehrt eine Bedingung um
+if not wetter == "regen":
+    print("Kein Regen in Sicht.")

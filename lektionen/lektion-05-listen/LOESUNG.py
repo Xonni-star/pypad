@@ -1,15 +1,13 @@
-# Lektion 05 — Lösung (erst nach eigenem Versuch!)
+# Lektion 05 — Lösung
 
-print("Meine Gerichte:")
-gerichte = ["Pizza", "Pasta", "Salat"]
+gerichte = ["Pizza", "Suppe", "Salat"]
+
 for i, gericht in enumerate(gerichte, start=1):
-    print(f"{i}. {gericht}")
+    print(i, ".", gericht)
 
-gerichte.append("Suppe")
-print("Jetzt sind es", len(gerichte), "Gerichte")
+gerichte.append("Nudeln")
+print("Anzahl:", len(gerichte))
 
-print()
-
-alter = {"Max": 45, "Anna": 32, "Ben": 12}
+alter = {"Max": 45, "Mia": 30, "Tom": 12}
 for name in alter:
-    print(f"{name} ist {alter[name]} Jahre alt")
+    print(name, "ist", alter[name], "Jahre alt")

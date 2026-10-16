@@ -1,8 +1,19 @@
 {
+  "titel": "Funktionen",
+  "ziel": "Eigene Funktionen schreiben, Parameter nutzen und Werte mit return zurückgeben.",
+  "erklaerung": [
+    "def begruessen(name): legt eine Funktion an. Der eingerückte Block ist ihr Inhalt und läuft erst beim Aufruf begruessen(\"Max\").",
+    "Parameter sind Platzhalter: beim Aufruf bekommt name den übergebenen Wert.",
+    "return gibt ein Ergebnis zurück — ohne return ist das Ergebnis None.",
+    "% ist der Rest einer Division: 7 % 2 ergibt 1. Damit prüft man gerade/ungerade: zahl % 2 == 0.",
+    "Willst du mit dem Ergebnis weiterrechnen, brauchst du return — print gibt nur aus."
+  ],
+  "beispiel_code": "def ist_gerade(zahl):\n    return zahl % 2 == 0\n\nfor i in range(1, 6):\n    print(i, \"gerade\" if ist_gerade(i) else \"ungerade\")",
   "tipps": [
-    "def name(parameter): - darunter eingerückt der Code der Funktion.",
-    "return gibt einen Wert zurück; ohne return kommt None heraus.",
-    "Aufrufen: print(flaeche(4, 5))"
+    "def name(parameter): darunter eingerückt der Code der Funktion",
+    "return gibt einen Wert zurück (ohne return kommt None heraus)",
+    "Rest einer Division: 7 % 2 ergibt 1 (ist_gerade: zahl % 2 == 0)",
+    "Ein Aufruf ohne Argumente nutzt Standardwerte: def rechteck(b, h=1)"
   ],
   "pruefung": {
     "uebung": [
@@ -42,17 +53,27 @@
         "einen Fehler"
       ],
       "richtig": 0,
-      "erklaerung": "Ohne return ist das Ergebnis None."
+      "erklaerung": "Ohne return ist das Ergebnis None — also „nichts“."
     },
     {
       "frage": "Wofür steht def?",
       "antworten": [
-        "Definition einer Funktion",
-        "Dateneingabe",
-        "Dekoration"
+        "eine Funktion definieren",
+        "einen Wert löschen",
+        "einen Fehler melden"
       ],
       "richtig": 0,
-      "erklaerung": "def name(parameter): legt eine Funktion an."
+      "erklaerung": "def leitet die Definition einer Funktion ein — englisch define."
+    },
+    {
+      "frage": "Wie prüfst du, ob eine Zahl gerade ist?",
+      "antworten": [
+        "zahl % 2 == 0",
+        "zahl / 2 == 0",
+        "zahl % 2 = 0"
+      ],
+      "richtig": 0,
+      "erklaerung": "% liefert den Rest, == vergleicht — bei geraden Zahlen ist der Rest 0."
     }
   ]
 }

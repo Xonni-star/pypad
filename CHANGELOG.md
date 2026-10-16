@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.11.0 - 2026-10-16
+
+**Lernbereich: Erklärungen für alle acht Lektionen**
+- Neuer Knopf `Erklärung` in der Lernleiste: Ziel, Erklärung in fünf Absätzen, Beispielcode und alle Tipps zur gewählten Lektion (kommt aus `info.json`)
+- Alle acht Lektionen überarbeitet: Beispiel und Lösung ausführlich kommentiert, konkrete Tipps, drei Quizfragen je Lektion mit Begründung
+- Themen: 01 Ausgaben, 02 Eingaben, 03 Entscheidungen, 04 Schleifen, 05 Listen & Dictionaries, 06 Funktionen, 07 Dateien & Module, 08 Mini-Projekte
+- Die eigenen Übungsdateien bleiben unangetastet; eine Sicherung der alten Fassung liegt in `~/Desktop/PyPad-backup-lektionen-2026-10-16`
+
 ## 1.10.0 - 2026-10-16
 
 **HTML-Live-Vorschau (offline und online)**
