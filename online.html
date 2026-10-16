@@ -177,8 +177,7 @@ async function ausfuehren() {
   var r = await post('/api/run', { code: editor.getValue(), stdin: document.getElementById('stdin').value });
   var d = await r.json();
   var text = d.stdout || '';
-  if (d.stderr) text += (text ? '
-' : '') + d.stderr;
+  if (d.stderr) text += (text ? '\n' : '') + d.stderr;
   out.textContent = text || '(keine Ausgabe)';
   document.getElementById('status').textContent = 'Exit ' + d.returncode + ' · ' + d.ms + ' ms';
 }
