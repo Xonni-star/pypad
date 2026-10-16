@@ -77,5 +77,29 @@
       "richtig": 0,
       "erklaerung": ":.2f im f-string bedeutet: Festkommazahl mit zwei Stellen nach dem Punkt."
     }
+  ],
+  "erklaerung_plus": [
+    "Sammeln bis zum Ende geht mit while True: und break, sobald die Eingabe leer ist.",
+    "Vorher legst du eine leere Liste an; jeder Artikel wird mit append() angehaengt.",
+    "Zum Schluss laeufst du mit enumerate() durch die Liste, damit die Artikel nummeriert sind.",
+    "Wenn die Liste leer ist, ueberspringt das Programm die Ausgabe einfach - kein Fehler."
+  ],
+  "beispiel_plus": "artikel = []\nwhile True:\n    eingabe = input(\"Artikel (leer = Ende): \")\n    if eingabe == \"\":\n        break\n    artikel.append(eingabe)",
+  "tipps_plus": [
+    "Leere Liste vor der Schleife anlegen",
+    "while True: ... if eingabe == \"\": break",
+    "Nummeriert ausgeben: for i, a in enumerate(artikel, start=1):"
+  ],
+  "erklaerung_profi": [
+    "Fuer einen Durchschnitt brauchst du alle Werte in einer Liste, die Summe und die Anzahl.",
+    "Eingelesen wird wie in Uebung +, nur dass du mit int(eingabe) gleich in eine Zahl umwandelst.",
+    "Danach ist der Durchschnitt schnell gerechnet: sum(noten) / len(noten).",
+    "Aufpassen: Wird sofort 'ende' eingegeben, ist die Liste leer - dann darf man nicht durch 0 teilen."
+  ],
+  "beispiel_profi": "werte = []\nwhile True:\n    e = input(\"Zahl (oder 'ende'): \")\n    if e == \"ende\":\n        break\n    werte.append(int(e))",
+  "tipps_profi": [
+    "while True: mit Abbruch bei 'ende'",
+    "int(eingabe) beim Anhaengen",
+    "Durchschnitt: sum(noten) / len(noten)"
   ]
 }

@@ -43,7 +43,8 @@
         "beschreibung": "Summe von 1 bis 100 ergibt 5050",
         "muss_enthalten": [
           "5050"
-        ]
+        ],
+        "stdin": "5\n"
       },
       {
         "stdin": "5\n",
@@ -98,5 +99,29 @@
       "richtig": 0,
       "erklaerung": "Der Start zählt mit, die obere Grenze nicht — deshalb endet es bei 4."
     }
+  ],
+  "erklaerung_plus": [
+    "Beim Summieren legst du vor der Schleife einen Startwert an (summe = 0) und zaehlst in der Schleife hoch.",
+    "range(1, 101) laeuft bis 100 - die obere Grenze gehoert nicht dazu. Genau so bekommst du die Summe von 1 bis 100.",
+    "Eine Fakultaet ist ein Produkt: ergebnis startet bei 1 und wird in der Schleife mit jedem Wert multipliziert.",
+    "Wichtig: Startwert 0 beim Addieren, Startwert 1 beim Multiplizieren."
+  ],
+  "beispiel_plus": "summe = 0\nfor i in range(1, 6):\n    summe = summe + i\nprint(\"Summe:\", summe)",
+  "tipps_plus": [
+    "Summe: summe = 0, dann summe = summe + i",
+    "Fakultaet: ergebnis = 1, dann ergebnis = ergebnis * i",
+    "range(1, n + 1) laeuft bis einschliesslich n"
+  ],
+  "erklaerung_profi": [
+    "Eine Primzahl ist nur durch 1 und sich selbst teilbar. Zum Pruefen reicht es, alle moeglichen Teiler von 2 bis zahl-1 durchzugehen.",
+    "Dazu brauchst du eine Schleife in der Schleife: aussen die Zahlen, innen die Teiler.",
+    "Ein Merker (prim = True) startet optimistisch; sobald ein Teiler passt, setzt du ihn auf False und brichst mit break ab.",
+    "Nach der inneren Schleife entscheidest du: wenn prim noch True ist, gibst du die Zahl aus."
+  ],
+  "beispiel_profi": "for zahl in range(2, 11):\n    prim = True\n    for teiler in range(2, zahl):\n        if zahl % teiler == 0:\n            prim = False",
+  "tipps_profi": [
+    "Aeussere Schleife: for zahl in range(2, 31):",
+    "Innere Schleife: for teiler in range(2, zahl):",
+    "break spart Zeit, sobald ein Teiler gefunden ist"
   ]
 }

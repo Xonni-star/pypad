@@ -84,5 +84,29 @@
       "richtig": 0,
       "erklaerung": "Ein Dictionary ordnet jedem Schlüssel einen Wert zu — praktisch für zusammengehörige Daten wie Name und Alter."
     }
+  ],
+  "erklaerung_plus": [
+    "Fuer Summe und Durchschnitt brauchst du nur zwei Bausteine: sum(liste) addiert alles, len(liste) sagt, wie viele Werte es sind.",
+    "Der Durchschnitt ist Summe geteilt durch Anzahl - also sum(zahlen) / len(zahlen).",
+    "Achte darauf, dass die Liste nicht leer ist: durch 0 teilen geht nicht (ZeroDivisionError).",
+    "Gib beide Werte mit einem beschrifteten Text aus, damit klar ist, was gemeint ist."
+  ],
+  "beispiel_plus": "zahlen = [4, 8, 15]\nprint(\"Summe:\", sum(zahlen))\nprint(\"Durchschnitt:\", sum(zahlen) / len(zahlen))",
+  "tipps_plus": [
+    "Summe: sum(zahlen)",
+    "Anzahl: len(zahlen)",
+    "Durchschnitt: sum(zahlen) / len(zahlen)"
+  ],
+  "erklaerung_profi": [
+    "Zum Zaehlen nutzt man ein Dictionary: der Schluessel ist das Wort, der Wert ist die Anzahl.",
+    "zaehler.get(wort, 0) liest den bisherigen Stand - und liefert 0, wenn das Wort noch nicht vorkam. Danach eins draufzaehlen.",
+    "Am Ende laeufst du mit for wort in zaehler: durch das Dictionary und gibst jedes Paar aus.",
+    "Die Ausgabeform ist wichtig: f\"{wort}: {anzahl}\" ergibt genau die Zeile 'a: 3', die die Pruefung erwartet."
+  ],
+  "beispiel_profi": "zaehler = {}\nfor wort in [\"a\", \"b\", \"a\"]:\n    zaehler[wort] = zaehler.get(wort, 0) + 1\nprint(zaehler)",
+  "tipps_profi": [
+    "Zaehler als Dictionary anlegen: zaehler = {}",
+    "Hochzaehlen: zaehler[wort] = zaehler.get(wort, 0) + 1",
+    "Ausgabe: f\"{wort}: {anzahl}\""
   ]
 }

@@ -3,7 +3,7 @@
 gerichte = ["Pizza", "Suppe", "Salat"]
 
 for i, gericht in enumerate(gerichte, start=1):
-    print(i, ".", gericht)
+    print(f"{i}. {gericht}")
 
 gerichte.append("Nudeln")
 print("Anzahl:", len(gerichte))

@@ -74,5 +74,29 @@
       "richtig": 0,
       "erklaerung": "Mit der Zahl 42 kann man rechnen (42 * 2 = 84), mit dem Text \"42\" nicht — dort hängt Python aneinander."
     }
+  ],
+  "erklaerung_plus": [
+    "Ein Steckbrief lebt von Gliederung: eine Rahmenzeile aus '='-Zeichen oberhalb und unterhalb, dazwischen die Angaben.",
+    "Zeichen wiederholen geht mit \"=\" * 25 - du bestimmst also, wie breit der Rahmen ist.",
+    "Mit f-strings kannst du Werte ausrichten: {name:8} reserviert 8 Zeichen. So stehen die Werte untereinander.",
+    "Bau es in dieser Reihenfolge: erst die Rahmenzeile, dann Zeile fuer Zeile die Angaben, am Ende wieder der Rahmen."
+  ],
+  "beispiel_plus": "print(\"=\" * 25)\nprint(f\"{'Name:':8}{'Max'}\")\nprint(f\"{'Alter:':8}{21}\")\nprint(\"=\" * 25)",
+  "tipps_plus": [
+    "Rahmen: print(\"=\" * 25)",
+    "Eigene Zeilen fuer Name, Alter, Wohnort, Hobby - mindestens sechs Zeilen insgesamt",
+    "Ausrichten mit f\"{'Name:':8}{wert}\""
+  ],
+  "erklaerung_profi": [
+    "Ein Rechteck ist eine Schleife: eine Zeile aus 10 Zeichen, das Ganze mehrfach wiederholt.",
+    "Du gibst die Breite als Zahl vor (10) und wiederholst das Zeichen damit: \"#\" * 10.",
+    "Die Hoehe steuerst du mit der Anzahl der Durchlaeufe - for i in range(5) ergibt fuenf Zeilen.",
+    "Achte darauf, dass es GENAU 10 Zeichen pro Zeile sind - die Pruefung schaut auf jede Zeile einzeln."
+  ],
+  "beispiel_profi": "breite = 6\nfor i in range(1, 4):\n    print(\"*\" * (breite - i))",
+  "tipps_profi": [
+    "Muster: print(\"#\" * 10)",
+    "Fuenf Zeilen: for i in range(5):",
+    "Breite und Hoehe als Variablen oben ablegen, dann kannst du leicht aendern"
   ]
 }

@@ -977,16 +977,21 @@ function zeigeErklaerung() {
     .then(function (d) {
       if (!d || (!d.ziel && !d.erklaerung)) { footHint.textContent = 'Fuer diese Lektion gibt es noch keine Erklaerung'; return; }
       var nl = String.fromCharCode(10);
-      var h = '<span class="explain"><span class="el">Erklaerung: ' + esc(titel) + '</span>' + nl;
+      var schluessel = stufeSchluessel();
+      var eigene = schluessel ? d['erklaerung_' + schluessel] : null;
+      var abs = eigene || d.erklaerung;
+      var code = (schluessel ? d['beispiel_' + schluessel] : null) || d.beispiel_code;
+      var tipps = (schluessel ? d['tipps_' + schluessel] : null) || d.tipps;
+      var h = '<span class="explain"><span class="el">Erklaerung: ' + esc(titel) + ' - ' + esc(stufeName()) + '</span>' + nl;
       if (d.ziel) { h += '<span class="et">Ziel: ' + esc(d.ziel) + '</span>' + nl + nl; }
-      var abs = d.erklaerung;
+      if (schluessel && !eigene) { h += '<span class="et">Fuer ' + esc(stufeName()) + ' gibt es noch keine eigene Erklaerung - hier die Grundlagen.</span>' + nl + nl; }
       if (abs) {
         (Array.isArray(abs) ? abs : [abs]).forEach(function (p) { h += '<span class="et">' + esc(p) + '</span>' + nl + nl; });
       }
-      if (d.beispiel_code) { h += '<span class="et">' + esc(d.beispiel_code) + '</span>' + nl + nl; }
-      if (d.tipps && d.tipps.length) {
+      if (code) { h += '<span class="et">' + esc(code) + '</span>' + nl + nl; }
+      if (tipps && tipps.length) {
         h += '<span class="el">Tipps</span>' + nl;
-        d.tipps.forEach(function (t) { h += '<span class="et">  - ' + esc(t) + '</span>' + nl; });
+        tipps.forEach(function (t) { h += '<span class="et">  - ' + esc(t) + '</span>' + nl; });
       }
       h += '</span>' + nl;
       outEl.insertAdjacentHTML('beforeend', h);
@@ -1000,7 +1005,8 @@ function zeigeTipp() {
   fetch('/lektion-info?dir=' + encodeURIComponent('lektionen/' + dir))
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) {
-      var tipps = (d && d.tipps) || [];
+      var schluessel = stufeSchluessel();
+      var tipps = (d && ((schluessel && d['tipps_' + schluessel]) || d.tipps)) || [];
       if (!tipps.length) { footHint.textContent = 'Für diese Lektion gibt es noch keinen Tipp'; return; }
       var i = zeigeTipp.zaehler = (zeigeTipp.zaehler || 0);
       var tipp = tipps[Math.min(i, tipps.length - 1)];
@@ -1942,21 +1948,52 @@ function enterSlot(key, file, text) {
   editor.focus();
 }
 
-function dateiFuer(kind) {
-  if (kind === 'LOESUNG') { return 'LOESUNG.py'; }
-  if (kind === 'beispiel') { return 'beispiel.py'; }
-  if (kind === 'uebung') { return stufeEl.value + '.py'; }
-  return kind + '.py';
+function stufeKuerzel() {
+  var s = (stufeEl && stufeEl.value) || 'uebung';
+  if (s === 'uebung-plus') { return '-plus'; }
+  if (s === 'uebung-profi') { return '-profi'; }
+  return '';
+}
+
+function stufeSchluessel() {
+  var s = (stufeEl && stufeEl.value) || 'uebung';
+  return s === 'uebung-plus' ? 'plus' : (s === 'uebung-profi' ? 'profi' : '');
+}
+
+function stufeName() {
+  var k = stufeKuerzel();
+  return k === '-plus' ? 'Übung +' : (k === '-profi' ? 'Übung ++' : 'Übung');
+}
+
+function dateiKandidaten(kind) {
+  var k = stufeKuerzel();
+  if (kind === 'uebung') { return [stufeEl.value + '.py']; }
+  var basis = (kind === 'LOESUNG') ? 'LOESUNG' : 'beispiel';
+  return k ? [basis + k + '.py', basis + '.py'] : [basis + '.py'];
+}
+
+async function lektionDateien(dir) {
+  try {
+    var d = await (await fetch('/files?dir=' + encodeURIComponent('lektionen/' + dir))).json();
+    return d.files || d.dateien || [];
+  } catch (e) { return []; }
 }
 
 async function openLesson(kind) {
   var dir = lessonsEl.value;
   if (!dir) { loadHint.textContent = 'Bitte zuerst eine Lektion waehlen'; return; }
-  var name = dateiFuer(kind);
   var folder = 'lektionen/' + dir;
+  stashCurrent();
+  var namen = dateiKandidaten(kind);
+  var vorhanden = await lektionDateien(dir);
+  var name = null;
+  for (var i = 0; i < namen.length; i++) {
+    if (vorhanden.indexOf(namen[i]) >= 0) { name = namen[i]; break; }
+  }
+  if (!name) { loadHint.textContent = 'nicht gefunden: ' + namen[0]; return; }
+  if (name !== namen[0]) { loadHint.textContent = 'Fuer ' + stufeName() + ' gibt es hier noch kein ' + namen[0] + ' - ich zeige ' + name; }
   var key = slotKey(folder, name);
   var file = { dir: folder, name: name };
-  stashCurrent();
   if (buffers[key]) {
     enterSlot(key, file, buffers[key].code);
     dirty = !!buffers[key].dirty;
@@ -1966,14 +2003,9 @@ async function openLesson(kind) {
     return;
   }
   try {
-    var res = await fetch('/file?dir=' + encodeURIComponent(folder) + '&name=' + encodeURIComponent(name));
-    if (!res.ok) {
-      loadHint.textContent = (kind === 'uebung' && name !== 'uebung.py')
-        ? ('Diese Stufe gibt es hier noch nicht: ' + name + ' - nimm "Übung"')
-        : ('nicht gefunden: ' + name);
-      return;
-    }
-    var data = await res.json();
+    var res2 = await fetch('/file?dir=' + encodeURIComponent(folder) + '&name=' + encodeURIComponent(name));
+    if (!res2.ok) { loadHint.textContent = 'nicht gefunden: ' + name; return; }
+    var data = await res2.json();
     buffers[key] = { code: data.code, dirty: false };
     enterSlot(key, file, data.code);
     tabRegistrieren(key, file);

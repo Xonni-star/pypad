@@ -1,5 +1,14 @@
 # Änderungen
 
+## 1.14.0 - 2026-10-17
+
+**Übung + und Übung ++ komplett ausgestattet**
+- Jede Lektion hat jetzt für jede Stufe ein eigenes **Beispiel** (beispiel-plus.py / beispiel-profi.py), eine kommentierte **Lösung** (LOESUNG-plus.py / LOESUNG-profi.py) und eigene **Erklärungen** mit Beispielcode und Tipps in info.json
+- Die Stufe im Dropdown steuert alles: Beispiel, Lösung, Erklärung und Tipp passen sich an; fehlt etwas für eine Stufe, fällt die App auf die Grundstufe zurück und sagt es
+- Prüfung: alle 24 Kombinationen (8 Lektionen × 3 Stufen) laufen gegen die Prüfregeln und bestehen
+- Korrigiert: der Prüffall "Summe 1 bis 100" (Übung + bei Schleifen) brauchte eine Eingabe — sonst wartete das Programm bis zum Zeitlimit; die Lektion-05-Lösung nummeriert jetzt als "1. Pizza" (ohne Leerzeichen vor dem Punkt)
+- LERNPLAN.md beschreibt die drei Stufen
+
 ## 1.13.1 - 2026-10-16
 
 **Hinweise (Linter): Fehlalarme behoben**

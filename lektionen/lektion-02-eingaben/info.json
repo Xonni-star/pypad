@@ -79,5 +79,29 @@
       "richtig": 0,
       "erklaerung": "Zwei Texte werden aneinandergehängt. Für 15 brauchst du int(\"12\") + int(\"3\")."
     }
+  ],
+  "erklaerung_plus": [
+    "Hier kommen zwei verschiedene Zahlentypen zusammen: Preise sind Kommazahlen (float), Stueckzahlen sind ganze Zahlen (int).",
+    "float(\"2.5\") ergibt 2.5 - wichtig: mit Punkt schreiben, sonst gibt es einen ValueError.",
+    "Rechnen kannst du direkt mit den Variablen; das Ergebnis wird in einem f-string mit :.2f auf zwei Nachkommastellen gebracht.",
+    "Reihenfolge im Programm: erst beide Werte einlesen, dann rechnen, dann ausgeben."
+  ],
+  "beispiel_plus": "preis = float(input(\"Preis: \"))\nanzahl = int(input(\"Anzahl: \"))\nprint(f\"Summe: {preis * anzahl:.2f} Euro\")",
+  "tipps_plus": [
+    "Preis mit float(input(...)) einlesen",
+    "Anzahl mit int(input(...)) einlesen",
+    "Ausgabe: f\"{gesamt:.2f} Euro\""
+  ],
+  "erklaerung_profi": [
+    "Zum Aufteilen einer Gesamtzahl brauchst du zwei Rechenarten: ganzzahlige Division // (wie oft passt es hinein) und Rest % (was bleibt uebrig).",
+    "Eine Stunde hat 3600 Sekunden, eine Minute 60. Erst die Stunden abspalten, dann aus dem Rest die Minuten, am Ende bleibt der Sekundenrest.",
+    "sekunden // 3600 ergibt die vollen Stunden, sekunden % 3600 den Rest - daraus wieder mit // 60 die Minuten.",
+    "Gib am Ende alles in einem Satz aus, damit man das Ergebnis lesen kann."
+  ],
+  "beispiel_profi": "sekunden = int(input(\"Sekunden: \"))\nprint(\"Stunden:\", sekunden // 3600)\nprint(\"Rest:\", sekunden % 3600)",
+  "tipps_profi": [
+    "Stunden: sekunden // 3600",
+    "Rest nach den Stunden: sekunden % 3600",
+    "Minuten daraus: rest // 60, Sekunden: rest % 60"
   ]
 }

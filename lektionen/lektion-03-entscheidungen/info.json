@@ -110,5 +110,29 @@
       "richtig": 0,
       "erklaerung": "== vergleicht, = weist zu. Das ist eine der häufigsten Verwechslungen."
     }
+  ],
+  "erklaerung_plus": [
+    "Bei vielen Faellen (Noten 1 bis 6) bietet sich eine Kette aus if / elif / elif / else an - von der besten zur schlechtesten Note.",
+    "Das else faengt am Ende alles auf, was nicht gepasst hat (hier die 5 und 6).",
+    "Ordne die Bedingungen so, dass die wichtigste zuerst geprueft wird - der erste Treffer gewinnt.",
+    "Eine kurze Tabelle im Kopf hilft: 1 = sehr gut, 2 = gut, 3 = befriedigend, 4 = ausreichend, sonst nicht bestanden."
+  ],
+  "beispiel_plus": "note = int(input(\"Note: \"))\nif note <= 2:\n    print(\"gut dabei\")\nelse:\n    print(\"ueben wir noch\")",
+  "tipps_plus": [
+    "if note == 1: ... elif note == 2: ... usw.",
+    "Das else faengt die schlechten Noten auf",
+    "Jede Ausgabe in eigenen, gut lesbaren Text setzen"
+  ],
+  "erklaerung_profi": [
+    "Fuer ein Schaltjahr gibt es eine klare Regel: durch 4 teilbar - aber Jahrhunderte (durch 100 teilbar) sind keine Schaltjahre, ausser sie sind durch 400 teilbar.",
+    "Teilbarkeit prueft man mit dem Rest: jahr % 4 == 0 heisst 'geht ohne Rest auf'.",
+    "Mehrere Bedingungen verbindest du mit and und or: (durch 4) und (nicht durch 100 oder durch 400).",
+    "Schreib die Bedingung ruhig in Klammern - das macht sie lesbar und vermeidet Denkfehler."
+  ],
+  "beispiel_profi": "zahl = int(input(\"Zahl: \"))\nif zahl % 2 == 0:\n    print(\"gerade\")\nelse:\n    print(\"ungerade\")",
+  "tipps_profi": [
+    "Teilbar: jahr % 4 == 0",
+    "Bedingungen verbinden mit and / or",
+    "Klammern: (jahr % 100 != 0 or jahr % 400 == 0)"
   ]
 }

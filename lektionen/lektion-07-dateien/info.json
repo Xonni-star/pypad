@@ -74,5 +74,29 @@
       "richtig": 0,
       "erklaerung": "write() schreibt genau die Zeichen, die du angibst — der Umbruch muss mit hinein."
     }
+  ],
+  "erklaerung_plus": [
+    "Der Modus entscheidet: \"w\" schreibt die Datei neu (alte Inhalte weg), \"a\" haengt hinten an.",
+    "So kannst du erst drei Zeilen schreiben und danach zwei weitere anhaengen - in der Datei stehen dann fuenf.",
+    "Zum Zaehlen liest du die Datei wieder ein und zaehlst die nicht-leeren Zeilen.",
+    "Wichtig: Jede Zeile braucht den Umbruch selbst, also wort + \"\\n\"."
+  ],
+  "beispiel_plus": "with open(\"test.txt\", \"w\") as d:\n    d.write(\"eins\" + \"\\n\")\nwith open(\"test.txt\", \"a\") as d:\n    d.write(\"zwei\" + \"\\n\")",
+  "tipps_plus": [
+    "Erst schreiben mit \"w\", dann anhaengen mit \"a\"",
+    "zaehlen: anzahl = len([z for z in datei if z.strip()])",
+    "Nicht vergessen: \"\\n\" beim Schreiben"
+  ],
+  "erklaerung_profi": [
+    "Fuer Kreise brauchst du pi - das steht im Modul math: math.pi.",
+    "Die Formel lautet Flaeche = pi * radius ** 2 (** heisst hoch).",
+    "Runden mit round(wert, 2) macht aus 28.274... die Zahl 28.27.",
+    "Denk an import math - ohne den Import kennt Python pi nicht."
+  ],
+  "beispiel_profi": "import math\nprint(\"pi:\", round(math.pi, 4))\nprint(\"Wurzel 9:\", math.sqrt(9))",
+  "tipps_profi": [
+    "import math",
+    "Flaeche = math.pi * radius ** 2",
+    "Runden: round(flaeche, 2)"
   ]
 }

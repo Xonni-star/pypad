@@ -24,7 +24,9 @@ Ziel: von Null auf Python — praxisnah, mit Übungen und kleinen Helfer-Tools.
 
 ## Struktur
 
-Jede Lektion hat einen Ordner mit `beispiel.py`, `uebung.py` und `LOESUNG.py` (dazu die Stufen `uebung-plus.py` und `uebung-profi.py`). Erklärungen, Tipps, Quizfragen und die Prüfregeln stehen in `info.json`.
+Jede Lektion hat drei Stufen: Übung, Übung +, Übung ++ — zu jeder Stufe gibt es `beispiel*.py`, `uebung*.py` und `LOESUNG*.py` (Grundstufe ohne Zusatz, dann `-plus`, `-profi`). Erklärungen, Tipps, Quizfragen und die Prüfregeln stehen in `info.json`.
 
 Am bequemsten in PyPad öffnen: Leiste **LERNEN** → Lektion wählen → Beispiel / Übung / Lösung.
 Speichern legt die Datei wieder in die Lektion, und Wechseln verliert keine Eingaben.
+
+Zu jeder Stufe gibt es Erklärung, Tipps, Beispiel und Lösung: Stufe im Dropdown wählen, dann **📖 Erklärung** (Ziel, Erklärung, Beispielcode, Tipps) oder **Beispiel** / **Lösung** klicken.

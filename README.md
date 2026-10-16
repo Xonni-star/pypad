@@ -62,7 +62,7 @@ variant with login, per-user workspaces and a sandboxed runner.*
   öffnen, bearbeiten und auf der Platte speichern) plus Tabs für mehrere offene Dateien
 - **Code-Faltung**, Zeile:Spalte-Anzeige, ungespeichert-Punkt, Ausgaben-Deckel bei sehr langen Läufen
 - **Git-Anbindung:** Status, Diff, Commit, Push und Pull direkt in der Seitenleiste (funktioniert mit jedem Git-Ordner)
-- **Lernbereich mit Erklärungen (LERNEN):** acht Lektionen von Ausgaben bis Mini-Projekten — je mit Beispiel, Übung, Lösung, Tipp und Quiz, plus Knopf „Erklärung" (Ziel, Erklärung, Beispielcode)
+- **Lernbereich mit Erklärungen (LERNEN):** acht Lektionen von Ausgaben bis Mini-Projekten, jede in **drei Stufen** (Übung, Übung +, Übung ++) — zu jeder Stufe Beispiel, Lösung, Erklärung und Tipps, plus Quiz; die gewählte Stufe steuert, was geladen und erklärt wird
 - **HTML-Live-Vorschau:** bei HTML-Dateien zeigt das Auge im Ausgabe-Bereich die gerenderte Seite neben dem Editor — sie aktualisiert sich live beim Tippen (abgeschotteter iframe, Skripte laufen, aber ohne Zugriff auf PyPad)
 - **Löschen:** **✕** in der Dateiliste (Datei und Ordner) und ein **Papierkorb-Knopf** in der Editor-Leiste für die gerade offene Datei — auch für Lektions- und Snippet-Dateien. Gelöschte Dateien verschwinden dabei auch aus der Liste "Zuletzt geöffnet" und aus offenen Registerkarten. **Lektionsordner und Lektionsmaterial** (Beispiel, Lösung, Info, Plan) sind geschützt — löschbar sind dort nur deine eigenen Dateien
 - **GitHub-Anmeldung:** Token im Git-Panel eintragen (wird bei GitHub geprüft, danach gehen **Push**, **Pull** und **private Repos**). Online wird er pro Benutzer mit `chmod 600` gespeichert, offline nur lokal im Browser; „Abmelden" entfernt ihn wieder.

@@ -75,5 +75,29 @@
       "richtig": 0,
       "erklaerung": "% liefert den Rest, == vergleicht — bei geraden Zahlen ist der Rest 0."
     }
+  ],
+  "erklaerung_plus": [
+    "Zwei kleine Funktionen sind hier sinnvoll: eine fuer die Flaeche (breite * hoehe) und eine fuer den Umfang (2 * (breite + hoehe)).",
+    "Beide bekommen Breite und Hoehe als Parameter und geben mit return einen Wert zurueck.",
+    "Die Ausgabe sollte die Woerter 'flaeche' und 'umfang' enthalten (klein geschrieben) - so prueft es die Pruefung.",
+    "Funktionen mit return sind besser als mit print: du kannst das Ergebnis weiterverwenden."
+  ],
+  "beispiel_plus": "def flaeche(b, h):\n    return b * h\nprint(\"flaeche:\", flaeche(5, 3))",
+  "tipps_plus": [
+    "def flaeche(breite, hoehe): return breite * hoehe",
+    "def umfang(breite, hoehe): return 2 * (breite + hoehe)",
+    "Ausgabe: print(\"flaeche:\", ...) und print(\"umfang:\", ...)"
+  ],
+  "erklaerung_profi": [
+    "Die Fakultaet ist ein Produkt aller Zahlen von 1 bis n - das Muster kennst du schon aus Lektion 04.",
+    "Packe es in eine Funktion mit return, dann kannst du sie beliebig oft aufrufen: fakultaet(5), fakultaet(3) ...",
+    "Der Startwert muss 1 sein (nicht 0), sonst bleibt das Produkt immer 0.",
+    "Gib das Ergebnis in einem Satz aus, z. B. f\"fakultaet(5) = {fakultaet(5)}\"."
+  ],
+  "beispiel_profi": "def fakultaet(n):\n    ergebnis = 1\n    for i in range(1, n + 1):\n        ergebnis = ergebnis * i\n    return ergebnis",
+  "tipps_profi": [
+    "ergebnis = 1 als Startwert",
+    "for i in range(1, n + 1): ergebnis = ergebnis * i",
+    "return ergebnis - und dann ausgeben"
   ]
 }
