@@ -454,9 +454,11 @@ class Handler(BaseHTTPRequestHandler):
             if not ziel.is_dir():
                 self._json({"error": "kein Ordner"}, 400)
                 return
-            endungen = {".py", ".js", ".mjs", ".html", ".htm", ".css", ".json", ".md", ".markdown",
-                        ".txt", ".sh", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf"}
-            dateien = sorted(p.name for p in ziel.iterdir() if p.is_file() and p.suffix.lower() in endungen)
+            endungen = {".py", ".js", ".mjs", ".cjs", ".html", ".htm", ".css", ".json", ".md", ".markdown",
+                        ".txt", ".sh", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf", ".csv", ".xml", ".svg", ".log"}
+            spezial = {"README", "LICENSE", "Makefile", "Dockerfile", ".gitignore", ".gitattributes"}
+            dateien = sorted(p.name for p in ziel.iterdir()
+                             if p.is_file() and (p.suffix.lower() in endungen or p.name in spezial))
             ordner = sorted(p.name for p in ziel.iterdir() if p.is_dir() and not p.name.startswith("."))
             self._json({"pfad": str(ziel), "dateien": dateien, "ordner": ordner})
             return

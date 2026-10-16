@@ -133,7 +133,7 @@ pre#out{flex:1;margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-bre
     <div class="teiler" id="teilerLinks"></div>
     <section class="pane">
       <div class="tabs" id="tabs"></div>
-      <div class="head"><span>Code</span><span id="fname" class="hint"></span><span class="spacer"></span><span id="cursor" class="hint">1:1</span><button id="btnSave" class="mini">Speichern</button></div>
+      <div class="head"><span>Code</span><span id="fname" class="hint"></span><span class="spacer"></span><span id="cursor" class="hint">1:1</span><button id="btnLoeschen" class="mini" title="Diese Datei loeschen" hidden>&#128465;</button><button id="btnSave" class="mini">Speichern</button></div>
       <div id="editor"></div>
     </section>
     <div class="teiler" id="teilerRechts"></div>
@@ -395,6 +395,7 @@ async function oeffnen(pfad) {
   editor.session.setMode(modeFuer(pfad));
   elem('fname').textContent = pfad;
   elem('btnVorschau').hidden = (editor.session.getMode().$id !== 'ace/mode/html');
+  elem('btnLoeschen').hidden = false;
   vorschauAus();
   tabAnzeigen();
   zeigeCursor();
@@ -690,6 +691,23 @@ function vorschauUmschalten() {
   if (htmlVorschauAn) { vorschauAus(); } else { vorschauZeigen(); }
 }
 
+async function dateiLoeschen() {
+  if (!aktuellerPfad) { appendChunk('err', 'Keine Datei offen' + nl()); return; }
+  if (!window.confirm('Wirklich loeschen: ' + aktuellerPfad + ' ?')) { return; }
+  var d = await (await post('/api/loeschen', { pfad: aktuellerPfad })).json();
+  if (!d.ok) { appendChunk('err', 'Loeschen fehlgeschlagen: ' + (d.error || '?') + nl()); return; }
+  var weg = aktuellerPfad;
+  var teile = weg.split('/');
+  var ordner = teile.slice(0, -1).join('/');
+  delete puffer[weg];
+  offeneTabs = offeneTabs.filter(function (t) { return t.pfad !== weg; });
+  aktuellerPfad = offeneTabs.length ? offeneTabs[offeneTabs.length - 1].pfad : null;
+  if (aktuellerPfad) { await oeffnen(aktuellerPfad); } else { editor.setValue('', -1); elem('fname').textContent = ''; tabAnzeigen(); }
+  elem('btnLoeschen').hidden = true;
+  appendChunk('sys', 'geloescht: ' + weg + nl());
+  ladeDateien(ordner);
+}
+
 async function gitDiff(datei) {
   var d = await (await get('/api/git-diff?datei=' + encodeURIComponent(datei) + '&pfad=' + encodeURIComponent(aktuellerOrdner))).json();
   var h = '<span class="explain"><span class="eh">Diff: ' + esc(datei) + '</span>' + nl() + esc(d.diff || '') + nl() + '</span>' + nl();
@@ -735,6 +753,7 @@ elem('btnWeiter').addEventListener('click', function(){ debugBefehl('run'); });
 elem('btnDbgStop').addEventListener('click', function(){ debugBefehl('stop'); });
 elem('btnGitRefresh').addEventListener('click', gitLaden);
 elem('btnVorschau').addEventListener('click', vorschauUmschalten);
+elem('btnLoeschen').addEventListener('click', dateiLoeschen);
 elem('btnGitCommit').addEventListener('click', function(){ gitBefehl('commit'); });
 elem('btnGitPush').addEventListener('click', function(){ gitBefehl('push'); });
 elem('btnGitPull').addEventListener('click', function(){ gitBefehl('pull'); });

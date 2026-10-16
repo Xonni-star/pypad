@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.12.0 - 2026-10-16
+
+**Online-Variante: gleiche Lösch-Möglichkeiten wie offline**
+- Papierkorb-Knopf auch in der Online-Editor-Leiste: löscht die gerade offene Datei nach Rückfrage (neben ✕ in der Liste für Dateien und Ordner)
+- Dateiliste zeigt jetzt dieselben Typen wie offline: zusätzlich csv, xml, svg, log sowie README, LICENSE, Makefile, Dockerfile, .gitignore, .gitattributes
+- Damit fehlen in der Online-Liste keine Dateien mehr, die offline sichtbar sind
+
 ## 1.11.1 - 2026-10-16
 
 **Löschen auch für Lektions- und Snippet-Dateien**
