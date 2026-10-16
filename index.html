@@ -946,6 +946,7 @@ function ladeFortschritt() {
 async function dateiLoeschen() {
   if (!currentFile) { footHint.textContent = 'Keine Datei offen'; return; }
   if (currentFile.host) { footHint.textContent = 'Loeschen auf verbundenen Servern geht noch nicht'; return; }
+  if (!darfLoeschen(currentFile)) { footHint.textContent = 'Das gehoert zur Lektion und ist geschuetzt (Beispiel, Loesung, Info, Plan)'; return; }
   var anzeige = (currentFile.dir ? currentFile.dir + '/' : '') + currentFile.name;
   if (!window.confirm('Wirklich loeschen: ' + anzeige + ' ?')) { return; }
   var ziel = currentFile.pfad ? '/pfad-loeschen' : '/delete';
@@ -1596,6 +1597,25 @@ function gitVonGithubLaden() {
     .catch(function () { footHint.textContent = 'keine Verbindung zum PyPad-Server'; });
 }
 
+var LEKTION_MATERIAL = ['beispiel.py', 'LOESUNG.py', 'info.json', 'LERNPLAN.md', 'lektionen.json'];
+
+function pfadGeschuetzt(pfad) {
+  var p = String(pfad || '');
+  if (p.indexOf('/lektionen/') < 0) { return false; }
+  var name = p.split('/').pop();
+  return LEKTION_MATERIAL.indexOf(name) >= 0;
+}
+
+function darfLoeschen(file) {
+  if (!file || file.host) { return false; }
+  var name = file.name || '';
+  var pfad = file.pfad || '';
+  var dir = file.dir || '';
+  var istLektion = (dir.indexOf('lektionen') === 0) || (pfad.indexOf('/lektionen/') >= 0);
+  if (!istLektion) { return true; }
+  return LEKTION_MATERIAL.indexOf(name) < 0;
+}
+
 function zuletztEntfernen(pfad, key) {
   var liste = zuletztLaden().filter(function (e) {
     if (key && e.key === key) { return false; }
@@ -1668,12 +1688,14 @@ function ordnerLaden() {
           otxt.textContent = String.fromCharCode(128193) + ' ' + o;
           oli.appendChild(otxt);
           oli.setAttribute('data-ordner', d.pfad + '/' + o);
-          var ox = document.createElement('span');
-          ox.className = 'x';
-          ox.textContent = String.fromCharCode(10005);
-          ox.title = 'Ordner loeschen';
-          ox.setAttribute('data-loeschen', d.pfad + '/' + o);
-          oli.appendChild(ox);
+          if (!pfadGeschuetzt(d.pfad + '/' + o)) {
+            var ox = document.createElement('span');
+            ox.className = 'x';
+            ox.textContent = String.fromCharCode(10005);
+            ox.title = 'Ordner loeschen';
+            ox.setAttribute('data-loeschen', d.pfad + '/' + o);
+            oli.appendChild(ox);
+          }
           ul.appendChild(oli);
         });
       }
@@ -1685,7 +1707,7 @@ function ordnerLaden() {
         li.appendChild(txt);
         li.setAttribute('data-pfad', d.pfad + '/' + name);
         if (ordnerHatVerbindung) { li.setAttribute('data-host', name); }
-        if (!ordnerHatVerbindung) {
+        if (!ordnerHatVerbindung && !pfadGeschuetzt(d.pfad + '/' + name)) {
           var x = document.createElement('span');
           x.className = 'x';
           x.textContent = String.fromCharCode(10005);
@@ -1913,7 +1935,7 @@ function enterSlot(key, file, text) {
   loading = false;
   currentKey = key;
   currentFile = file;
-  document.getElementById('btnLoeschen').hidden = false;
+  document.getElementById('btnLoeschen').hidden = !darfLoeschen(file);
   dirty = false;
   showFileHint();
   updateStdinHint();

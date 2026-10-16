@@ -410,6 +410,25 @@ def resolve_dir(rel):
     return None
 
 
+LEKTION_MATERIAL = ("beispiel.py", "LOESUNG.py", "info.json", "LERNPLAN.md", "lektionen.json")
+
+
+def lektion_geschuetzt(pfad):
+    """Lektionsordner und das Material (Beispiel, Loesung, Info, Plan) sind geschuetzt.
+
+    Eigene Dateien im Lektionsordner - auch die Uebungsdateien - bleiben loeschbar.
+    """
+    try:
+        p = Path(str(pfad)).resolve()
+        basis = LESSON_DIR.resolve()
+        p.relative_to(basis)
+    except Exception:
+        return False
+    if p == basis or p.is_dir():
+        return True
+    return p.name in LEKTION_MATERIAL
+
+
 def file_path(directory, name):
     directory = resolve_dir(directory)
     if directory is None:
@@ -1598,6 +1617,9 @@ class Handler(BaseHTTPRequestHandler):
 
         if url.path == "/pfad-loeschen":
             ziel = abs_pfad(data.get("pfad"))
+            if lektion_geschuetzt(ziel):
+                self._json({"error": "Das gehoert zur Lektion und ist geschuetzt (Beispiel, Loesung, Info, Plan)."}, 403)
+                return
             if not ziel.exists():
                 self._json({"error": "gibt es nicht mehr"}, 404)
                 return
@@ -1761,6 +1783,9 @@ class Handler(BaseHTTPRequestHandler):
             path = file_path(data.get("dir"), data.get("name"))
             if not path or not path.exists():
                 self._json({"error": "nicht gefunden"}, 404)
+                return
+            if lektion_geschuetzt(path):
+                self._json({"error": "Das gehoert zur Lektion und ist geschuetzt (Beispiel, Loesung, Info, Plan)."}, 403)
                 return
             path.unlink()
             self._json({"deleted": path.name})

@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.13.0 - 2026-10-16
+
+**Lektionen sind geschützt — nur die eigenen Dateien sind löschbar**
+- Lektionsordner und Lektionsmaterial (beispiel.py, LOESUNG.py, info.json, LERNPLAN.md, lektionen.json) lassen sich nicht mehr löschen: kein ✕ in der Liste, kein Papierkorb bei diesen Dateien, und der Server lehnt es zusätzlich ab (klare Meldung)
+- Eigene Dateien im Lektionsordner bleiben löschbar, auch uebung.py, uebung-plus.py, uebung-profi.py
+- Wiederhergestellt: fehlende Materialdateien (beispiel.py in Lektion 01, 03 und 08), die eigenen Übungsdateien aus 01 und 03 (aus der Sicherung) sowie selbsttest.py
+
 ## 1.12.1 - 2026-10-16
 
 **Gelöschte Dateien blieben in Listen stehen**
