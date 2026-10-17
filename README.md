@@ -133,6 +133,27 @@ Zusaetzlich gibt es eine abgesicherte Online-Variante fuer den Betrieb auf einem
 - Adressen werden **IPv4 zuerst** aufgeloest (vermeidet lange Haenger, wenn eine IPv6-Adresse vorhanden aber nicht erreichbar ist)
 - Optionaler **Internet-Zugriff** pro Lauf (Haekchen "Internet", Standard aus): Internet ja, eigenes Netz nein - Loopback, RFC1918, Tailnet, Link-Local und IPv6-Privat bleiben gesperrt (nftables filtert nur den Sandkasten-Benutzer). Einrichtung: `/srv/pypad/netz-setup/setup.sh` als root.
 
+## Docker
+
+Fertiges Abbild aus der GitHub-Registry (wird bei jedem Release gebaut):
+
+```
+docker run -d --name pypad -p 8080:8080 \
+  -e PYPAD_ADMIN_PW=meinPasswort \
+  -v pypad-daten:/srv/pypad \
+  ghcr.io/xonni-star/pypad:latest
+```
+
+Danach <http://localhost:8080> öffnen und als `admin` mit dem gesetzten Passwort anmelden. Selbst bauen geht auch:
+`docker build -t pypad .` und `docker compose up -d` (nutzt `docker-compose.yml` mit Port, Volume und Grenzen).
+
+**Wichtig zu wissen**
+- Der Container **ist** die Abschottung: ausgeführter Code läuft mit den Rechten des Benutzers `pypad` **im Container** — nicht auf dem eigenen Rechner.
+- Ausgeführter Code hat im Container Netzwerkzugriff. Wer das nicht will: `--network none` (dann gehen Klonen/Pull/Push im Git-Panel nicht).
+- Benutzer und Workspaces liegen im Volume `/srv/pypad` — ohne Volume sind sie nach dem nächsten Container weg.
+- Ohne `PYPAD_ADMIN_PW` erzeugt der Server ein Zufallspasswort und schreibt es ins Log (`docker logs pypad`).
+- Umgebungsvariablen: `PYPAD_ADMIN_PW`, `PYPAD_HTTP=1` (ohne TLS, z. B. hinter Proxy), `PYPAD_PORT`, `PYPAD_RUNNER=direkt`, `PYPAD_DATA`.
+
 ## App und Startskripte
 
 - **macOS:** `PyPad.command` (Terminal) oder die beiliegende App-Hülle `PyPad.app` fürs Dock.

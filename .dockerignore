@@ -1,0 +1,11 @@
+# Nur was der Server braucht
+.git
+.github
+docs
+lektionen
+snippets
+playground
+__pycache__
+*.pyc
+*.md
+!README.md

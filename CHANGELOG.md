@@ -1,5 +1,14 @@
 # Änderungen
 
+## 1.15.0 - 2026-10-17
+
+**PyPad als Docker-Container**
+- `Dockerfile` (python:3.12-slim, eigener Benutzer `pypad`, `HEALTHCHECK`), `.dockerignore` und `docker-compose.yml` mit Grenzen (512 MB, 256 Prozesse, keine zusätzlichen Rechte)
+- GitHub-Action `.github/workflows/docker.yml`: baut das Abbild bei jedem Push und lädt es bei Releases nach `ghcr.io/xonni-star/pypad`
+- Server kann jetzt beides: `PYPAD_HTTP=1` (ohne TLS für Container hinter einem Proxy; Sitzungs-Cookie dann ohne `Secure`) und `PYPAD_RUNNER=direkt` (Code läuft ohne sudo mit ulimits — im Container)
+- Erster Admin per `PYPAD_ADMIN_PW`; Daten liegen im Volume `/srv/pypad`
+- Hinweis: im Container hat ausgeführter Code Netzwerkzugriff (der Container ist die Abschottung); mit `--network none` abschaltbar
+
 ## 1.14.0 - 2026-10-17
 
 **Übung + und Übung ++ komplett ausgestattet**

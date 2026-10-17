@@ -32,9 +32,26 @@ DATA = Path(os.environ.get("PYPAD_DATA", "/srv/pypad"))
 USERS_FILE = DATA / "users.json"
 SESSIONS_FILE = DATA / "sessions.json"
 RUN_DIR = DATA / "run"
-WRAPPER = "/usr/local/bin/pypad-run"
+WRAPPER = os.environ.get("PYPAD_WRAPPER", "/usr/local/bin/pypad-run")
 HOST = os.environ.get("PYPAD_HOST", "0.0.0.0")
 PORT = int(os.environ.get("PYPAD_PORT", "8443"))
+
+# Betriebsart: "sudo" = abgesicherter Sandkasten mit eigenem Benutzer (Standard),
+# "direkt" = ohne sudo mit ulimits - gedacht fuer Container, wo der Container selbst
+# die Abschottung ist (Docker-Abbild setzt das).
+RUNNER_MODUS = (os.environ.get("PYPAD_RUNNER") or "sudo").strip().lower()
+# Ohne TLS (z. B. hinter einem Reverse-Proxy im Container): PYPAD_HTTP=1
+HTTP_MODUS = (os.environ.get("PYPAD_HTTP") or "").strip().lower() in ("1", "ja", "yes", "true", "an")
+
+
+def ausfuehr_basis():
+    """Befehlspraefix fuer ausgefuehrten Code (sudo-Sandkasten oder direkt mit Limits)."""
+    if RUNNER_MODUS == "direkt":
+        return ["sh", "-c",
+                "ulimit -v 262144 2>/dev/null; ulimit -t 20 2>/dev/null; "
+                "ulimit -f 65536 2>/dev/null; ulimit -n 64 2>/dev/null; exec \"$@\"",
+                "sh", sys.executable, "-u"]
+    return ["sudo", "-n", WRAPPER]
 CERT = os.environ.get("PYPAD_CERT", str(DATA / "elitebook.taila52ac2.ts.net.crt"))
 KEY = os.environ.get("PYPAD_KEY", str(DATA / "elitebook.taila52ac2.ts.net.key"))
 STATIC = Path(__file__).resolve().parent
@@ -226,9 +243,9 @@ def run_code(user, code, stdin_text):
     if pypad is not None:
         runner.write_text(pypad.RUNNER_SOURCE, encoding="utf-8")
         os.chmod(runner, 0o644)
-        befehl = ["sudo", "-n", WRAPPER, str(runner), str(script), str(vars_pfad)]
+        befehl = ausfuehr_basis() + [str(runner), str(script), str(vars_pfad)]
     else:
-        befehl = ["sudo", "-n", WRAPPER, str(script)]
+        befehl = ausfuehr_basis() + [str(script)]
     start = time.time()
     try:
         fertig = subprocess.run(befehl, input=(stdin_text or "").encode("utf-8"),
@@ -280,9 +297,9 @@ def complete_words(code, prefix):
 
 LAEUFE = {}
 LAEUFE_LOCK = threading.Lock()
-SANDBOX = ["sudo", "-n", WRAPPER]
+SANDBOX = ausfuehr_basis()
 WRAPPER_NET = os.environ.get("PYPAD_WRAPPER_NET", "/usr/local/bin/pypad-run-net")
-SANDBOX_NET = ["sudo", "-n", WRAPPER_NET]
+SANDBOX_NET = ["sudo", "-n", WRAPPER_NET] if RUNNER_MODUS != "direkt" else SANDBOX
 
 
 def netz_verfuegbar():
@@ -365,7 +382,8 @@ class Handler(BaseHTTPRequestHandler):
         return sitzung_pruefen(token) if token else None
 
     def _cookie_string(self, token):
-        return "session=" + token + "; HttpOnly; Secure; SameSite=Strict; Path=/"
+        sicher = "" if HTTP_MODUS else "; Secure"
+        return "session=" + token + "; HttpOnly" + sicher + "; SameSite=Strict; Path=/"
 
     def _ip(self):
         return self.client_address[0]
@@ -744,11 +762,15 @@ def main():
         log("Erster Admin angelegt: 'admin'  (Passwort gesetzt)")
 
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ctx.load_cert_chain(CERT, KEY)
-    httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
-    log("PyPad-Server lauscht auf https://" + HOST + ":" + str(PORT) + "/")
-    log("Zertifikat: " + CERT)
+    if HTTP_MODUS:
+        log("PyPad-Server lauscht auf http://" + HOST + ":" + str(PORT) + "/ (ohne TLS - z. B. hinter Proxy)")
+    else:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(CERT, KEY)
+        httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+        log("PyPad-Server lauscht auf https://" + HOST + ":" + str(PORT) + "/")
+        log("Zertifikat: " + CERT)
+    log("Code-Ausfuehrung: " + ("direkt mit ulimits (Container)" if RUNNER_MODUS == "direkt" else "Sandkasten ueber " + WRAPPER))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

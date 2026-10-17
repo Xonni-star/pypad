@@ -1,0 +1,27 @@
+# PyPad Server mit docker compose
+#   docker compose up -d          -> http://localhost:8080
+#   Passwort fuer den ersten Admin unten setzen (PYPAD_ADMIN_PW)
+services:
+  pypad:
+    build: .
+    image: ghcr.io/xonni-star/pypad:latest
+    container_name: pypad
+    ports:
+      - "8080:8080"
+    environment:
+      PYPAD_ADMIN_PW: "bitte-aendern"
+      PYPAD_RUNNER: direkt
+      PYPAD_HTTP: "1"
+    volumes:
+      - pypad-daten:/srv/pypad
+    restart: unless-stopped
+    # Der Container ist die Abschottung - keine zusaetzlichen Rechte
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    pids_limit: 256
+
+volumes:
+  pypad-daten:
